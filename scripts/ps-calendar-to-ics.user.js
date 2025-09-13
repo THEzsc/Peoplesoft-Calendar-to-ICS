@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PS Calendar to ICS (ZJU)
 // @namespace    https://github.com/yourname/ps-calendar-to-ics
-// @version      0.2.4-debug
+// @version      0.2.5-debug
 // @description  将 PeopleSoft「我的每周课程表-列表查看」导出为 ICS 文件（支持中文/英文标签，Asia/Shanghai）
 // @author       You
 // @match        https://scrsprd.zju.edu.cn/psc/CSPRD/EMPLOYEE/HRMS/*
@@ -282,7 +282,7 @@
         const parsed = parseScheduleFromDocument(doc);
         console.log("[DEBUG] 解析结果:", parsed);
         if (!parsed || parsed.events.length === 0) {
-          alert("未找到课程表数据（请确认处于"列表查看"界面）。");
+          alert("未找到课程表数据（请确认处于“列表查看”界面）。");
           return;
         }
         const icsText = buildICS(parsed);
@@ -320,7 +320,9 @@
 
     // Strategy: find tables that look like meeting info grids
     const candidateTables = Array.from(root.querySelectorAll("table"));
+    console.log("[DEBUG] 找到候选表格数量:", candidateTables.length);
     const grids = candidateTables.filter((t) => isMeetingGrid(t));
+    console.log("[DEBUG] 识别为课表的表格数量:", grids.length);
     const events = [];
 
     for (const grid of grids) {
@@ -369,15 +371,32 @@
 
   function isMeetingGrid(table) {
     const headerText = cleanText(table.textContent);
+    console.log("[DEBUG] 检查表格是否为课表:", table.id, "表头文本:", headerText.substring(0, 200));
     if (!headerText) return false;
-    const hasCols =
-      /(Days\s*&\s*Times|日期[与和及]?时间|星期与时间|上课时间)/i.test(headerText) &&
-      /(Room|教室|地点)/i.test(headerText) &&
-      /(Instructor|教师|老师|讲师)/i.test(headerText) &&
-      /(Start\/?End Date|开始\/?结束日期|起止日期|开始日期)/i.test(headerText);
+    
+    const timePattern = /(Days\s*&\s*Times|日期[与和及]?时间|星期[与和及]?时间|上课时间)/i;
+    const roomPattern = /(Room|教室|地点)/i;
+    const instructorPattern = /(Instructor|教师|老师|讲师)/i;
+    const datePattern = /(Start\/?End Date|开始\/?结束日期|起止日期|开始.*日期)/i;
+    
+    const hasTime = timePattern.test(headerText);
+    const hasRoom = roomPattern.test(headerText);
+    const hasInstructor = instructorPattern.test(headerText);
+    const hasDate = datePattern.test(headerText);
+    
+    console.log("[DEBUG] 表格字段检查:", {
+      时间字段: hasTime,
+      教室字段: hasRoom, 
+      教师字段: hasInstructor,
+      日期字段: hasDate
+    });
+    
+    const hasCols = hasTime && hasRoom && hasInstructor && hasDate;
     if (!hasCols) return false;
+    
     // Grid should have multiple rows
     const rows = table.querySelectorAll("tr");
+    console.log("[DEBUG] 表格行数:", rows.length);
     return rows.length >= 2;
   }
 
