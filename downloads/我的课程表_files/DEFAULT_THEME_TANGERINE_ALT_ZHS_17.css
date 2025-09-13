@@ -1,0 +1,254 @@
+
+#ptbr_header_container #pthdr2container {
+  background-image: url(/cs/CSPRD/cache/PT_HEADERBG_ALT_ZHS_1.png);
+  border-bottom-width: 0px;
+  height: 57px;
+  min-width: 950px;
+  text-align: center;
+  position: relative;
+}
+
+
+
+#pthdr2container #pthdr2logoswan:before {
+  content: url(/cs/CSPRD/cache/PT_ORACLELOGO_ALT_ZHS_109690.png);
+  width: 130px;
+}
+
+
+
+#pthdr2container a.PSHYPERLINK,
+#pthdr2container a.PSHYPERLINK:hover,
+#pthdr2container a.PSHYPERLINK:visited {
+  background-color: transparent;
+  color: #FFFFFF;
+  font-size: 10pt;
+}
+
+#pthdr2container a.PSHYPERLINK:hover {
+  color: #96B8D2;
+}
+
+#pthdr2container .pthdr2sep {
+  background: url(/cs/CSPRD/cache/PT_HEADERLINK_SEP_ALT_ZHS_1.png) no-repeat scroll center center transparent;
+}
+
+#pthdr2container #pthdr2home {
+  background: url(/cs/CSPRD/cache/PT_HEADERLINK_HOME_ALT_ZHS_1.png) no-repeat scroll left center transparent;
+  padding-left: 22px;
+}
+
+
+
+#pthdr2navbarlinks a.PSHYPERLINK,
+#pthdr2navbarlinks a.PSHYPERLINK:hover,
+#pthdr2navbarlinks a.PSHYPERLINK:visited {
+  font-size: 9pt;
+}
+
+#pthdr2navbarlinks #pthdr2addto_div {
+  display: inline-block;
+  vertical-align: 14px;
+}
+
+#pthdr2navbarlinks #pthdr2addto_div.active {
+  background-color: #DAE9F8;
+  border: 1px solid #666666;
+}
+
+#pthdr2navbarlinks #pthdr2addto:after {
+  content: url(/cs/CSPRD/cache/PT_ADDTOLINK_ARROW_ZHS_1.png)
+}
+
+#pthdr2navbarlinks #pthdr2addto span {
+  display: inline-block;
+  margin: 6px;
+  vertical-align: 2px;
+}
+
+#pthdr2navbarlinks #pthdr2addto_div.active #pthdr2addto {
+  color: #284562;
+}
+
+#pthdr2navbarlinks #pthdr2addto_div.active #pthdr2addto:after {
+  content: url(/cs/CSPRD/cache/PT_ADDTOLINK_ARROW_A_ZHS_1.png);
+}
+
+#pthdr2navbarlinks #pthdr2addto_div .ps-pin-menu {
+  border: 1px solid #666666;
+  box-shadow: 0px 3px 3px #999999;
+}
+
+#pthdr2navbarlinks #pthdr2addto_div .ps-pin-menu ul {
+  margin: 5px 10px;
+  padding: 0;
+  text-align: left;
+  list-style: none;
+  background-color: #FFFFFF;
+}
+
+#pthdr2navbarlinks #pthdr2addto_div .ps-pin-menu ul li {
+  padding: 5px 0;
+}
+
+#pthdr2navbarlinks #pthdr2addto_div .ps-pin-menu ul li a,
+#pthdr2navbarlinks #pthdr2addto_div .ps-pin-menu ul li a:hover,
+#pthdr2navbarlinks #pthdr2addto_div .ps-pin-menu ul li a:visited {
+  font-size: 9pt;
+  color: #004B91;
+  text-decoration: none;
+  background: url(/cs/CSPRD/cache/PT_ADDTOLINK_ITEM_ICON_ZHS_1.png) no-repeat scroll left center transparent;
+  padding: 5px;
+  padding-left: 20px;
+}
+
+#pthdr2navbarlinks #pthdr2addto_div .ps-pin-menu ul li a:hover {
+  text-decoration: underline;
+}
+
+#pthdr2navbarlinks #pthdr2navbar {
+  background: url(/cs/CSPRD/cache/PT_NAVBARLINK_BG_ALT_ZHS_1.png) repeat-x scroll 0 0 transparent;
+  display: inline-block;
+  padding: 0 1em;
+  margin: 0;
+  height: 57px;
+}
+
+#pthdr2navbarlinks #pthdr2navbar span {
+  background: url(/cs/CSPRD/cache/PT_HEADER_NAVBAR_ZHS_1.svg) no-repeat scroll center 8px transparent;
+  display: inline-block;
+  padding-top: 38px;
+}
+
+
+#pthdr2navbarlinks #pthdr2notify span {
+  background: url(/cs/CSPRD/cache/PT_HEADER_ALERTS_ZHS_1.svg) no-repeat scroll center 8px transparent;
+  display: inline-block;
+  padding-top: 38px;
+}
+
+
+
+#pthdr2container #ptsearchbox.ptsearchbox {
+  margin: 0;
+  margin-top: 1em;
+  margin-right: 220px;
+}
+
+#pthdr2container #pthdr2advsrch,
+#pthdr2container .pthdr2tdsrchpromptc span {
+  color: #FFFFFF;
+}
+
+#pthdr2container #pthdr2advsrch:hover {
+  color: #96B8D2;
+}
+
+#pthdr2container #pthdr2srchprompt,
+#pthdr2container #pthdr2srchprompt_GBL {
+  color: #FFFFFF;
+  margin-top: 3px;
+}
+
+#pthdr2container #pthdr2srchprompt:hover,
+#pthdr2container #pthdr2srchprompt_GBL:hover {
+  color: #96B8D2;
+}
+
+
+
+#ptdropdownmenu {
+  background: url(/cs/CSPRD/cache/PT_BREADCRUMB_ALT_ZHS_1.png) repeat scroll 0 0 transparent;
+  height: 26px;
+}
+
+#ptdropdownmenu #pthnavcontainer {
+  background-image: none;
+}
+
+#ptdropdownmenu li.pthnavbarfldr,
+#ptdropdownmenu #pthnavbc li.pthnavbarfldr {
+  padding-left: 2px;
+  padding-right: 2px;
+}
+
+#ptdropdownmenu a.pthnavbcanchor,
+#ptdropdownmenu a.pthnavbcanchor:hover,
+#ptdropdownmenu a.pthnavbcanchor:focus,
+#ptdropdownmenu #pthnavbc li a,
+#ptdropdownmenu #pthnavbc li a:hover,
+#ptdropdownmenu #pthnavbc li a:focus {
+  color: #FFFFFF !important;
+}
+
+#ptdropdownmenu a.pthnavbcanchor:hover,
+#ptdropdownmenu #pthnavbc li a:hover {
+  color: #96B8D2 !important;
+}
+
+#ptdropdownmenu #pthnavbc_MYFAVORITES.pthnavbaropen #pthnavbca_MYFAVORITES,
+#ptdropdownmenu #pthnavbc_MYFAVORITES.pthnavbaropen #pthnavbca_MYFAVORITES:focus,
+#ptdropdownmenu #pthnavbc_PORTAL_ROOT_OBJECT.pthnavbaropen #pthnavbca_PORTAL_ROOT_OBJECT,
+#ptdropdownmenu #pthnavbc_PORTAL_ROOT_OBJECT.pthnavbaropen #pthnavbca_PORTAL_ROOT_OBJECT:focus,
+#ptdropdownmenu #pthnavbc li.pthnavbaropen a,
+#ptdropdownmenu #pthnavbc li.pthnavbaropen a:focus {
+  color: #284562 !important;
+}
+
+#ptdropdownmenu #pthnavbc_MYFAVORITES.pthnavbaropen #pthnavbca_MYFAVORITES:hover,
+#ptdropdownmenu #pthnavbc_PORTAL_ROOT_OBJECT.pthnavbaropen #pthnavbca_PORTAL_ROOT_OBJECT:hover,
+#ptdropdownmenu #pthnavbc li.pthnavbaropen a:hover {
+  color: #333333 !important;
+}
+
+
+#ptdropdownmenu .pthnavbarfldr:after {
+  content: url(/cs/CSPRD/cache/PT_HNAV_ALT_BC_DOWN_ARROW_ZHS_1.png);
+  position:absolute;
+}
+
+#ptdropdownmenu .pthnavbarfldr {
+  background-image: none;
+}
+
+#ptdropdownmenu .pthnavbarfldr a {
+  padding-right: 15px;
+}
+
+#ptdropdownmenu .pthnav a, #ptdropdownmenu .pthnav span, #ptdropdownmenu #pthnavbc a, #ptdropdownmenu #pthnavbc span {
+  vertical-align:middle;
+}
+
+#ptdropdownmenu li#pthnavbc, #ptdropdownmenu li.pthnavbarfldr {
+  padding-top: 1px;
+}
+
+#ptdropdownmenu li.pthnavhiearchysep {
+  top: 2px;
+}
+
+#ptdropdownmenu li.pthnavhiearchysep:before {
+  content: url(/cs/CSPRD/cache/PT_HNAV_ALT_HIEARCHY_SEP_ZHS_1.png);
+}
+
+#ptdropdownmenu li#pthnavfavsep {
+  background-image: url(/cs/CSPRD/cache/PT_HNAV_ALT_FAV_SEP_ZHS_1.png);
+}
+
+#ptdropdownmenu #pthnavbc_MYFAVORITES.pthnavloading,
+#ptdropdownmenu #pthnavbc_PORTAL_ROOT_OBJECT.pthnavloading,
+#ptdropdownmenu #pthnavbc .pthnavloading {
+  background-image: none;
+}
+
+#ptdropdownmenu #pthnavbc_MYFAVORITES.pthnavloading:before,
+#ptdropdownmenu #pthnavbc_PORTAL_ROOT_OBJECT.pthnavloading:before,
+#ptdropdownmenu #pthnavbc .pthnavloading:before {
+  content: url(/cs/CSPRD/cache/PT_NAV2_LOADING_ZHS_1.gif);
+}
+
+
+
+.PTNavBarModal {
+  top: 5.7em;
+}

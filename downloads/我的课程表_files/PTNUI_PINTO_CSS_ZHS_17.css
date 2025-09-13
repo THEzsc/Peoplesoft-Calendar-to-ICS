@@ -1,0 +1,245 @@
+
+#PT_TOAST {
+    position: fixed;
+    top: 79px;
+    left: 0px;
+    right: 0px;
+    margin-left: 2em;
+    margin-right: 2em;
+    background: white;
+    border-radius: 0em 0em .1em .1em;
+    border: 1px solid #ccc;
+    background: #ccc;
+    -webkit-box-sizing: border-box; -moz-box-sizing: border-box; -ms-box-sizing: border-box; box-sizing: border-box;
+    z-index:102;
+}
+
+#PT_TOAST .tmsg {
+    text-align: center;
+    overflow: hidden;
+    -webkit-transition: height 1s; -moz-transition: height 1s; -ms-transition: height 1s; transition: height 1s;
+    height: 0px;
+    padding-top: 0.2em;
+    margin-left: 0.1em;
+    margin-right: 0.1em;
+    margin-bottom: 0.1em;
+
+    border-radius: .1em;
+    border: 1px solid #ccc;
+    background: white;
+}
+
+#PT_TOAST .tmsg.show {
+    height: 30px;
+}
+
+
+#PT_PINTO_MASK {
+    width: 100%;
+    height: 100%;
+    position: fixed;
+    top: 0px;
+    z-index: 101;
+}
+
+#PT_PINLPSELECT {
+    position: absolute;
+    margin: auto;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 350px;
+    height: 400px;
+    background: white;
+
+    border: 1px solid #6C6C6C;
+    border-radius: 3px;
+    box-shadow: 0px 0px 25px #5A5A5A; 
+    font-size: 11pt;
+}
+
+
+#PT_PINLPSELECT.ps_modal_container .ps_modal_header {
+    background-color: #F5F5F5;
+    border-radius: 5px 5px 0px 0px;
+    border-bottom: 1px none #BBB;
+    overflow: hidden;
+    position: relative;
+    border-style: none;
+    line-height: 2em;
+    text-align: center;
+    color: #AB5B1A;
+    box-shadow: 0px 8px 10px #FFF inset;  
+}
+#PT_PINLPSELECT.ps_modal_container .ps_modal_title {
+    font-weight: bold;
+    font-size: 1.1em;
+    border-bottom: 1px solid #BBB;
+    height: 100%;
+    padding-top: 4px;
+    width: 100%;
+}
+#PT_PINLPSELECT.ps_modal_container .ps_modal_close {
+    position: absolute;
+    top: 0.1em;
+    right: 0.4em;
+}
+#PT_PINLPSELECT h2 {
+    font-size: 1.1em;
+}
+#PT_PINLPSELECT .addto .ps_header-group, #PT_PINLPSELECT .addtofooter .ps_header-group {
+    margin-top: 0.25em;
+    margin-bottom: 0em;
+    padding-left: 1em;
+    color: #333;
+    border-bottom: 1px solid #CCC;
+    -webkit-box-sizing: border-box; -moz-box-sizing: border-box; -ms-box-sizing: border-box; box-sizing: border-box;
+    text-align: left;
+}
+#PT_PINLPSELECT .pinnewlp div.ps_box-button {
+    line-height: 1.2em;
+    vertical-align: middle;
+    font-weight: bold;
+    white-space: nowrap;
+    display: inline-block;
+    -webkit-box-sizing: border-box; -moz-box-sizing: border-box; -ms-box-sizing: border-box; box-sizing: border-box;
+}
+#PT_PINLPSELECT .pinnewlp div.ps_box-button .ps-button-wrapper {
+    display: inline-block;
+}
+#PT_PINLPSELECT .pinnewlp div.ps_box-button .ps-button-wrapper .ps-button {
+    display: inline-block;
+    padding: 0.5em 1.2em;
+    border: 1px solid #A5A7A8;
+    border-radius: 0.25em;
+    background-image: linear-gradient(#FFF, #CCC);
+    box-shadow: 1px 1px 2px rgba(51, 51, 51, 0.4), 1px 1px 2px rgba(255, 255, 255, 0.7) inset; 
+    text-decoration: none;
+    color: #000;
+    text-shadow: 1px 1px 0px #EEE; 
+    vertical-align: bottom;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-left:0.5em;
+}
+
+
+:root.psc_dir-rtl #PT_PINLPSELECT .pinnewlp div.ps_box-button .ps-button-wrapper .ps-button 
+{
+    box-shadow: -1px 1px 2px rgba(51, 51, 51, 0.4), -1px 1px 2px rgba(255, 255, 255, 0.7) inset; 
+    text-shadow: -1px 1px 0px #EEE; 
+}
+
+
+
+#PT_PINLPSELECT .ps_modal_header {
+    margin-bottom: 0em;
+}
+
+#PT_PINLPSELECT .ps_modal_content {
+    text-align: left;
+}
+
+#PT_PINLPSELECT ul {
+    margin:0em;
+    height: 253px;
+    border-bottom: 1px solid #ccc;
+    overflow: auto;
+}
+
+#PT_PINLPSELECT li a.disabled {
+    pointer-events: none;
+    cursor: default;
+    color: #999;
+}
+
+#PT_PINLPSELECT .pinnewlp {
+    position: absolute;
+    bottom: 0px;
+    height: 48px;
+    padding: 0.5em;
+    padding-left: 1.5em;
+    padding-right: 1.5em;
+    width: 100%;
+    -webkit-box-sizing: border-box; -moz-box-sizing: border-box; -ms-box-sizing: border-box; box-sizing: border-box;
+}
+
+#PT_PINLPSELECT .pinnewlp input {
+    display: inline;
+    width: 220px;
+}
+
+#PT_PINLPSELECT .pinnewlp div.ps_box-button {
+    font-size: 0.9em;
+}
+
+.ps-pin-menu {
+    position: absolute;
+    background: white;
+    left: 0px;
+}
+
+.ps-pin-hidden {
+    display: none;
+}
+
+.lplistgrid ul {
+    list-style: none;
+    padding-left: 0em;
+}
+
+.lplistgrid div.lplistitem {
+border-bottom: 0.091em solid #E7E7E7;
+
+border-right: 0.091em solid #E7E7E7;
+width: 100%;
+-webkit-box-sizing: border-box; -moz-box-sizing: border-box; -ms-box-sizing: border-box; box-sizing: border-box;
+
+}
+
+.lplistgrid div.lplistitem.fldr {
+
+    background: url('/cs/CSPRD/cache/PT_NUI_CHEVRON_ZHS_1.svg') no-repeat 97%;
+}
+
+.lplistgrid .lplistitem span {
+    width: 100%;
+}
+
+.lplistgrid a {
+    padding: 1.3em 0.5em;
+    display: block;
+    padding-left: 2.4em;
+    white-space: normal;
+    font-family: Arial;
+    font-weight: bold;
+}
+
+.lplistgrid a:link, .nui-myfav-gb a:visited, .nui-myfav-gb a:hover, .nui-myfav-gb a:active, .nui-myfav-gb a:focus {
+  color: #2e6596;
+  text-decoration: none;
+}
+
+.lplistgrid div.lplistitem:hover {
+    background-color: #ffffeb;
+}
+
+.lplistgrid div.lplistitem:active {
+    background-color: rgba(26,54,78,0.4);
+}
+
+.ps_pinto_close > .ps-button-wrapper > .ps-button {
+    background: transparent;
+    border: 1px solid transparent;
+    box-shadow: none; 
+    border-radius: 1em; 
+    padding: 0.3em 0.55em 0.33em 0.55em ; 
+    line-height: initial;
+    vertical-align: middle;
+}
+
+.ps_pinto_close > .ps-button-wrapper > .ps-button:hover {
+    background:#fff;
+    border-color: #999;
+}
