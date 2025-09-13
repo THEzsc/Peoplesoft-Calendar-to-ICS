@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PS Calendar to ICS (ZJU)
 // @namespace    https://github.com/yourname/ps-calendar-to-ics
-// @version      0.2.2
+// @version      0.2.3-debug
 // @description  将 PeopleSoft「我的每周课程表-列表查看」导出为 ICS 文件（支持中文/英文标签，Asia/Shanghai）
 // @author       You
 // @match        https://scrsprd.zju.edu.cn/psc/CSPRD/EMPLOYEE/HRMS/*
@@ -35,7 +35,7 @@
     
     // 调休补课：在makeupDate上originalDate星期几的课
     makeupClasses: [
-      // 9月28日（周六）上10月3日（周五）的课
+      // 9月28日（周六）上10月3日（周四）的课
       { makeupDate: new Date(2024, 8, 28), originalDate: new Date(2024, 9, 3) },
       // 10月11日（周五）上10月8日（周二）的课  
       { makeupDate: new Date(2024, 9, 11), originalDate: new Date(2024, 9, 8) },
@@ -210,11 +210,13 @@
     btn.addEventListener("click", async () => {
       try {
         const parsed = parseScheduleFromDocument(doc);
+        console.log("[DEBUG] 解析结果:", parsed);
         if (!parsed || parsed.events.length === 0) {
-          alert("未找到课程表数据（请确认处于“列表查看”界面）。");
+          alert("未找到课程表数据（请确认处于"列表查看"界面）。");
           return;
         }
         const icsText = buildICS(parsed);
+        console.log("[DEBUG] 生成的ICS长度:", icsText.length);
         const fileName = buildSuggestedFileName(parsed);
         triggerDownload(icsText, fileName);
       } catch (err) {
@@ -646,9 +648,11 @@
     const dtstamp = toUTCStringBasic(now);
 
     // 导出学期备注（全天事件）
+    console.log("[DEBUG] 开始导出全天事件，共", ACADEMIC_NOTES_2024_2025.length, "个事件");
     for (const note of ACADEMIC_NOTES_2024_2025) {
       const s = dateOnly(note.start);
       const e = addDays(dateOnly(note.end), 1); // DTEND为次日
+      console.log("[DEBUG] 导出全天事件:", note.summary, "从", s, "到", e);
       lines.push("BEGIN:VEVENT");
       lines.push("UID:" + buildSimpleUID("note-" + note.summary + "-" + s.getTime(), now));
       lines.push("DTSTAMP:" + dtstamp + "Z");
@@ -723,14 +727,18 @@
         }
         
         // 2. 调休补课：如果originalDate的星期几与课程的BYDAY匹配，则在makeupDate上课
+        console.log("[DEBUG] 课程", ev.summary, "的上课星期:", ev.days, "对应数字:", Array.from(bydays));
         for (const makeup of ACADEMIC_CALENDAR_2024_2025.makeupClasses) {
           const originalDow = makeup.originalDate.getDay(); // 原来应该上课的星期几
+          console.log("[DEBUG] 检查调休:", makeup.makeupDate, "补", makeup.originalDate, "星期", originalDow);
           if (bydays.has(originalDow)) {
             const makeupDay = dateOnly(makeup.makeupDate);
+            console.log("[DEBUG] 匹配！补课日:", makeupDay, "课程范围:", dateOnly(ev.startDate), "-", dateOnly(ev.endDate));
             // 检查补课日是否在课程日期范围内
             if (makeupDay >= dateOnly(ev.startDate) && makeupDay <= dateOnly(ev.endDate)) {
               const rLocal = new Date(makeupDay.getFullYear(), makeupDay.getMonth(), makeupDay.getDate(), ev.startTime.h, ev.startTime.m, 0, 0);
               const key = toLocalStringBasic(rLocal);
+              console.log("[DEBUG] 添加补课:", key);
               if (!rdateSet.has(key)) {
                 lines.push("RDATE;TZID=" + TZID + ":" + key);
                 rdateSet.add(key);
