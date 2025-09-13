@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PS Calendar to ICS (ZJU)
 // @namespace    https://github.com/yourname/ps-calendar-to-ics
-// @version      0.2.3-debug
+// @version      0.2.4-debug
 // @description  将 PeopleSoft「我的每周课程表-列表查看」导出为 ICS 文件（支持中文/英文标签，Asia/Shanghai）
 // @author       You
 // @match        https://scrsprd.zju.edu.cn/psc/CSPRD/EMPLOYEE/HRMS/*
@@ -89,6 +89,8 @@
    * Main bootstrap: observe page and iframes, inject export buttons when schedule view is present.
    */
   function bootstrap() {
+    console.log("[DEBUG] PS Calendar to ICS 脚本启动");
+    console.log("[DEBUG] 当前URL:", window.location.href);
     tryInjectForDocument(window.document);
     // Observe top document changes (PeopleSoft is dynamic)
     observeForSchedule(window.document);
@@ -117,6 +119,64 @@
       childList: true,
       subtree: true,
     });
+    
+    // Also try again after a short delay (for dynamic content)
+    setTimeout(() => {
+      console.log("[DEBUG] 延迟重试注入按钮...");
+      tryInjectForDocument(window.document);
+    }, 2000);
+    
+    // Additional retry for PeopleSoft's complex loading
+    setTimeout(() => {
+      console.log("[DEBUG] 最终重试注入按钮...");
+      tryInjectForDocument(window.document);
+      // Force inject a debug button if still not found
+      if (!document.getElementById("ps-ics-export-btn")) {
+        console.log("[DEBUG] 强制注入调试按钮");
+        forceInjectDebugButton();
+      }
+    }, 5000);
+  }
+  
+  function forceInjectDebugButton() {
+    const btn = document.createElement("button");
+    btn.id = "ps-ics-export-btn";
+    btn.textContent = "导出 ICS (调试)";
+    btn.style.position = "fixed";
+    btn.style.right = "16px";
+    btn.style.bottom = "16px";
+    btn.style.zIndex = "2147483647";
+    btn.style.padding = "10px 14px";
+    btn.style.borderRadius = "8px";
+    btn.style.border = "1px solid #d0570b";
+    btn.style.background = "#d21967";
+    btn.style.color = "#fff";
+    btn.style.fontSize = "14px";
+    btn.style.boxShadow = "0 2px 8px rgba(0,0,0,0.25)";
+    btn.style.cursor = "pointer";
+    btn.title = "强制调试模式";
+    btn.addEventListener("click", () => {
+      console.log("[DEBUG] 强制调试按钮被点击");
+      console.log("[DEBUG] 页面元素检查:");
+      console.log("- win0divSTDNT_ENRL_SSV2$0:", document.querySelector('#win0divSTDNT_ENRL_SSV2\\$0'));
+      console.log("- ACE_STDNT_ENRL_SSV2$0:", document.querySelector('#ACE_STDNT_ENRL_SSV2\\$0'));
+      console.log("- PAGROUPDIVIDER:", document.querySelectorAll('td.PAGROUPDIVIDER').length);
+      console.log("- CLASS_MTG_VW tables:", document.querySelectorAll('table[id*="CLASS_MTG_VW"]').length);
+      
+      // Try to parse anyway
+      const parsed = parseScheduleFromDocument(document);
+      console.log("[DEBUG] 强制解析结果:", parsed);
+      
+      if (parsed && parsed.events.length > 0) {
+        const icsText = buildICS(parsed);
+        console.log("[DEBUG] 生成ICS长度:", icsText.length);
+        const fileName = buildSuggestedFileName(parsed);
+        triggerDownload(icsText, fileName);
+      } else {
+        alert("调试模式：未找到课程数据。请查看控制台日志。");
+      }
+    });
+    document.body.appendChild(btn);
   }
 
   function attachIframeListener(iframe) {
@@ -160,6 +220,7 @@
    * Returns an element or null.
    */
   function findScheduleRoot(doc) {
+    console.log("[DEBUG] 查找课表根元素...");
     // Typical container mentioned by user: #win0divSTDNT_ENRL_SSV2$0 > table#ACE_STDNT_ENRL_SSV2$0
     const selectors = [
       '#win0divSTDNT_ENRL_SSV2\\$0',
@@ -170,7 +231,11 @@
     ];
     for (const sel of selectors) {
       const el = doc.querySelector(sel);
-      if (el) return el;
+      console.log("[DEBUG] 选择器", sel, "结果:", el ? "找到" : "未找到");
+      if (el) {
+        console.log("[DEBUG] 找到课表根元素:", el.id, el.tagName);
+        return el;
+      }
     }
     // Fallback: detect by header columns "Days & Times" / "日期与时间"
     const tables = Array.from(doc.querySelectorAll("table"));
@@ -190,7 +255,12 @@
   }
 
   function injectExportButton(doc) {
-    if (doc.getElementById("ps-ics-export-btn")) return;
+    const existingBtn = doc.getElementById("ps-ics-export-btn");
+    if (existingBtn) {
+      console.log("[DEBUG] 按钮已存在，跳过注入");
+      return;
+    }
+    console.log("[DEBUG] 开始注入导出按钮");
     const btn = doc.createElement("button");
     btn.id = "ps-ics-export-btn";
     btn.textContent = "导出 ICS";
@@ -225,6 +295,7 @@
       }
     });
     (doc.body || doc.documentElement).appendChild(btn);
+    console.log("[DEBUG] 导出按钮已注入到", doc === window.document ? "主文档" : "iframe文档");
   }
 
   function buildSuggestedFileName(parsed) {

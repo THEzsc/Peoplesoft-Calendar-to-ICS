@@ -77,6 +77,30 @@
         console.log("课表根元素:", document.querySelector('#win0divSTDNT_ENRL_SSV2\\$0'));
         console.log("课程标题元素:", document.querySelectorAll('td.PAGROUPDIVIDER'));
         console.log("课程表格:", document.querySelectorAll('table[id*="CLASS_MTG_VW"]'));
+        
+        // 手动触发按钮注入（模拟用户脚本）
+        setTimeout(() => {
+            console.log("手动触发按钮注入");
+            if (window.forceInjectDebugButton) {
+                window.forceInjectDebugButton();
+            } else {
+                // 创建一个简单的测试按钮
+                const btn = document.createElement("button");
+                btn.textContent = "测试导出";
+                btn.style.position = "fixed";
+                btn.style.right = "16px";
+                btn.style.bottom = "16px";
+                btn.style.zIndex = "999999";
+                btn.style.padding = "10px";
+                btn.style.background = "#4CAF50";
+                btn.style.color = "white";
+                btn.style.border = "none";
+                btn.style.borderRadius = "4px";
+                btn.style.cursor = "pointer";
+                btn.onclick = () => alert("请在 PeopleSoft 网站上测试完整功能");
+                document.body.appendChild(btn);
+            }
+        }, 1000);
     </script>
 </body>
 </html>
