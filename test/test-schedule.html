@@ -5,183 +5,197 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的课程表 - 测试</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        table { border-collapse: collapse; width: 100%; margin: 20px 0; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-        .course-title { font-weight: bold; margin: 20px 0 10px 0; }
-        .PSHYPERLINK { color: blue; text-decoration: underline; }
-        .PAGROUPDIVIDER { 
-            background-color: #e8f4f8; 
-            font-weight: bold; 
-            padding: 8px; 
-            border-left: 4px solid #0066cc;
-            margin: 10px 0;
+        .PAGROUPDIVIDER {
+            background-color: #f0f0f0;
+            font-weight: bold;
+            padding: 5px;
+            border: 1px solid #ccc;
+        }
+        .PSLEVEL3GRIDNBO {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        .PSLEVEL3GRIDCOLUMNHDR {
+            background-color: #e0e0e0;
+            font-weight: bold;
+            padding: 3px;
+            border: 1px solid #999;
+        }
+        .PSLEVEL3GRIDROW {
+            padding: 3px;
+            border: 1px solid #ccc;
+        }
+        .PSEDITBOX_DISPONLY {
+            display: inline;
+        }
+        .PSHYPERLINK {
+            color: blue;
+            text-decoration: underline;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
         }
     </style>
 </head>
 <body>
-    <h1>我的课程表 - 2024-2025学年秋冬学期</h1>
+    <h1 class="PATRANSACTIONTITLE">我的课程表</h1>
     
-    <div id="win0divSTDNT_ENRL_SSV2$0">
-        <table id="ACE_STDNT_ENRL_SSV2$0">
-            <!-- 第一门课程 -->
-            <tr>
-                <td>
-                    <div id="win0divDERIVED_REGFRM1_DESCR20$0">
-                        <table cellpadding="2" cellspacing="0" cols="1" class="PSGROUPBOXWBO" width="539">
-                            <tbody>
-                                <tr><td class="PAGROUPDIVIDER" align="left">CS 3301 - 计算机网络原理</td></tr>
-                                <tr><td width="537">
-                                    <div id="win0divCLASS_MTG_VW$0">
-                                        <table id="CLASS_MTG_VW$scroll$0" cellpadding="2">
+    <!-- Course 1: CS 101 -->
+    <div id="win0divDERIVED_REGFRM1_DESCR20$0">
+        <table cellpadding="2" cellspacing="0" cols="1" class="PSGROUPBOXWBO" width="539">
+            <tbody>
                 <tr>
-                    <th>课程号码</th>
-                    <th>区段</th>
-                    <th>组件</th>
-                    <th>日期和时间</th>
-                    <th>教室</th>
-                    <th>讲师</th>
-                    <th>开始/结束日期</th>
+                    <td class="PAGROUPDIVIDER" align="left">CS 101 - 计算导论：工程与科学</td>
                 </tr>
                 <tr>
-                    <td>1001</td>
-                    <td><a href="#" class="PSHYPERLINK">LE1</a></td>
-                    <td>讲授</td>
-                    <td>星期一 8:00AM - 9:50AM</td>
-                    <td>东1A-101</td>
-                    <td>张三教授</td>
-                    <td>16/09/2024 - 26/12/2024</td>
+                    <td width="537">
+                        <div id="win0divCLASS_MTG_VW$0">
+                            <table cellspacing="0" class="PSLEVEL3GRIDNBO" id="CLASS_MTG_VW$scroll$0" dir="ltr" cols="7" width="540" cellpadding="2">
+                                <tbody>
+                                    <tr>
+                                        <th scope="col" abbr="课程号码" width="48" align="CENTER" class="PSLEVEL3GRIDCOLUMNHDR">课程号码</th>
+                                        <th scope="col" abbr="区段" width="26" align="CENTER" class="PSLEVEL3GRIDCOLUMNHDR">区段</th>
+                                        <th scope="col" abbr="组件" width="51" align="left" class="PSLEVEL3GRIDCOLUMNHDR">组件</th>
+                                        <th scope="col" abbr="日期和时间" width="90" align="left" class="PSLEVEL3GRIDCOLUMNHDR">日期和时间</th>
+                                        <th scope="col" abbr="教室" width="58" align="left" class="PSLEVEL3GRIDCOLUMNHDR">教室</th>
+                                        <th scope="col" abbr="讲师" width="87" align="left" class="PSLEVEL3GRIDCOLUMNHDR">讲师</th>
+                                        <th scope="col" abbr="开始/结束日期" width="80" align="left" class="PSLEVEL3GRIDCOLUMNHDR">开始/结束日期</th>
+                                    </tr>
+                                    <tr id="trCLASS_MTG_VW$0_row1">
+                                        <td align="right" height="19" class="PSLEVEL3GRIDROW">
+                                            <div><span class="PSEDITBOX_DISPONLY">1097</span></div>
+                                        </td>
+                                        <td class="PSLEVEL3GRIDROW" align="CENTER">
+                                            <div><span class="PSHYPERLINK"><a href="#" class="PSHYPERLINK">LA1</a></span></div>
+                                        </td>
+                                        <td class="PSLEVEL3GRIDROW" align="left">
+                                            <div><span class="PSEDITBOX_DISPONLY">实验室</span></div>
+                                        </td>
+                                        <td class="PSLEVEL3GRIDROW" align="left">
+                                            <div><span class="PSEDITBOX_DISPONLY">星期一 2:00PM - 3:50PM</span></div>
+                                        </td>
+                                        <td class="PSLEVEL3GRIDROW" align="left">
+                                            <div><span class="PSEDITBOX_DISPONLY">东1A-101</span></div>
+                                        </td>
+                                        <td class="PSLEVEL3GRIDROW" align="left">
+                                            <div><span class="PSEDITBOX_DISPONLY">张三</span></div>
+                                        </td>
+                                        <td class="PSLEVEL3GRIDROW" align="left">
+                                            <div><span class="PSEDITBOX_DISPONLY">15/09/2025 - 26/12/2025</span></div>
+                                        </td>
+                                    </tr>
+                                    <tr id="trCLASS_MTG_VW$0_row2">
+                                        <td align="right" height="19" class="PSLEVEL3GRIDROW">
+                                            <div><span class="PSEDITBOX_DISPONLY">&nbsp;</span></div>
+                                        </td>
+                                        <td class="PSLEVEL3GRIDROW" align="CENTER">
+                                            <div><span class="PSHYPERLINK"><a href="#" class="PSHYPERLINK">LEC1</a></span></div>
+                                        </td>
+                                        <td class="PSLEVEL3GRIDROW" align="left">
+                                            <div><span class="PSEDITBOX_DISPONLY">讲授</span></div>
+                                        </td>
+                                        <td class="PSLEVEL3GRIDROW" align="left">
+                                            <div><span class="PSEDITBOX_DISPONLY">星期三 10:00AM - 11:50AM</span></div>
+                                        </td>
+                                        <td class="PSLEVEL3GRIDROW" align="left">
+                                            <div><span class="PSEDITBOX_DISPONLY">西1-101</span></div>
+                                        </td>
+                                        <td class="PSLEVEL3GRIDROW" align="left">
+                                            <div><span class="PSEDITBOX_DISPONLY">李四</span></div>
+                                        </td>
+                                        <td class="PSLEVEL3GRIDROW" align="left">
+                                            <div><span class="PSEDITBOX_DISPONLY">15/09/2025 - 26/12/2025</span></div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </td>
                 </tr>
-                <tr>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td>星期三 8:00AM - 9:50AM</td>
-                    <td>东1A-101</td>
-                    <td>张三教授</td>
-                    <td>16/09/2024 - 26/12/2024</td>
-                </tr>
-                                        </table>
-                                    </div>
-                                </td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </td>
-            </tr>
-            
-            <!-- 第二门课程 -->
-            <tr>
-                <td>
-                    <div id="win0divDERIVED_REGFRM1_DESCR20$1">
-                        <table cellpadding="2" cellspacing="0" cols="1" class="PSGROUPBOXWBO" width="539">
-                            <tbody>
-                                <tr><td class="PAGROUPDIVIDER" align="left">CS 2201 - 数据结构与算法</td></tr>
-                                <tr><td width="537">
-                                    <div id="win0divCLASS_MTG_VW$1">
-                                        <table id="CLASS_MTG_VW$scroll$1" cellpadding="2">
-                <tr>
-                    <th>课程号码</th>
-                    <th>区段</th>
-                    <th>组件</th>
-                    <th>日期和时间</th>
-                    <th>教室</th>
-                    <th>讲师</th>
-                    <th>开始/结束日期</th>
-                </tr>
-                <tr>
-                    <td>1002</td>
-                    <td><a href="#" class="PSHYPERLINK">LE1</a></td>
-                    <td>讲授</td>
-                    <td>星期二 2:00PM - 3:50PM</td>
-                    <td>西1-203</td>
-                    <td>李四副教授</td>
-                    <td>16/09/2024 - 26/12/2024</td>
-                </tr>
-                <tr>
-                    <td></td>
-                    <td></td>
-                    <td>实验</td>
-                    <td>星期四 2:00PM - 4:50PM</td>
-                    <td>计算机中心-机房1</td>
-                    <td>王五助教</td>
-                    <td>16/09/2024 - 26/12/2024</td>
-                </tr>
-                                        </table>
-                                    </div>
-                                </td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </td>
-            </tr>
-            
-            <!-- 第三门课程 -->
-            <tr>
-                <td>
-                    <div id="win0divDERIVED_REGFRM1_DESCR20$2">
-                        <table cellpadding="2" cellspacing="0" cols="1" class="PSGROUPBOXWBO" width="539">
-                            <tbody>
-                                <tr><td class="PAGROUPDIVIDER" align="left">MATH 1201 - 高等数学(甲)II</td></tr>
-                                <tr><td width="537">
-                                    <div id="win0divCLASS_MTG_VW$2">
-                                        <table id="CLASS_MTG_VW$scroll$2" cellpadding="2">
-                <tr>
-                    <th>课程号码</th>
-                    <th>区段</th>
-                    <th>组件</th>
-                    <th>日期和时间</th>
-                    <th>教室</th>
-                    <th>讲师</th>
-                    <th>开始/结束日期</th>
-                </tr>
-                <tr>
-                    <td>1003</td>
-                    <td><a href="#" class="PSHYPERLINK">LE1</a></td>
-                    <td>讲授</td>
-                    <td>星期一 10:00AM - 11:50AM</td>
-                    <td>东1A-201</td>
-                    <td>赵六教授</td>
-                    <td>16/09/2024 - 26/12/2024</td>
-                </tr>
-                <tr>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td>星期三 10:00AM - 11:50AM</td>
-                    <td>东1A-201</td>
-                    <td>赵六教授</td>
-                    <td>16/09/2024 - 26/12/2024</td>
-                </tr>
-                <tr>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td>星期五 10:00AM - 11:50AM</td>
-                    <td>东1A-201</td>
-                    <td>赵六教授</td>
-                    <td>16/09/2024 - 26/12/2024</td>
-                </tr>
-                                        </table>
-                                    </div>
-                                </td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </td>
-            </tr>
+            </tbody>
         </table>
     </div>
-    
-    <div style="margin-top: 30px; padding: 15px; background-color: #f0f8ff; border-radius: 5px;">
-        <h3>测试说明</h3>
-        <p>这是一个简化的测试页面，用于验证 Tampermonkey 脚本功能。</p>
-        <ul>
-            <li>安装脚本后，页面右下角应出现"导出 ICS"按钮</li>
-            <li>点击按钮应生成包含3门课程的ICS文件</li>
-            <li>每门课程包含不同的时间安排和教室信息</li>
-        </ul>
+
+    <!-- Course 2: MATH 201 -->
+    <div id="win0divDERIVED_REGFRM1_DESCR20$1">
+        <table cellpadding="2" cellspacing="0" cols="1" class="PSGROUPBOXWBO" width="539">
+            <tbody>
+                <tr>
+                    <td class="PAGROUPDIVIDER" align="left">MATH 201 - 高等数学</td>
+                </tr>
+                <tr>
+                    <td width="537">
+                        <div id="win0divCLASS_MTG_VW$1">
+                            <table cellspacing="0" class="PSLEVEL3GRIDNBO" id="CLASS_MTG_VW$scroll$1" dir="ltr" cols="7" width="540" cellpadding="2">
+                                <tbody>
+                                    <tr>
+                                        <th scope="col" abbr="课程号码" width="48" align="CENTER" class="PSLEVEL3GRIDCOLUMNHDR">课程号码</th>
+                                        <th scope="col" abbr="区段" width="26" align="CENTER" class="PSLEVEL3GRIDCOLUMNHDR">区段</th>
+                                        <th scope="col" abbr="组件" width="51" align="left" class="PSLEVEL3GRIDCOLUMNHDR">组件</th>
+                                        <th scope="col" abbr="日期和时间" width="90" align="left" class="PSLEVEL3GRIDCOLUMNHDR">日期和时间</th>
+                                        <th scope="col" abbr="教室" width="58" align="left" class="PSLEVEL3GRIDCOLUMNHDR">教室</th>
+                                        <th scope="col" abbr="讲师" width="87" align="left" class="PSLEVEL3GRIDCOLUMNHDR">讲师</th>
+                                        <th scope="col" abbr="开始/结束日期" width="80" align="left" class="PSLEVEL3GRIDCOLUMNHDR">开始/结束日期</th>
+                                    </tr>
+                                    <tr id="trCLASS_MTG_VW$1_row1">
+                                        <td align="right" height="19" class="PSLEVEL3GRIDROW">
+                                            <div><span class="PSEDITBOX_DISPONLY">2098</span></div>
+                                        </td>
+                                        <td class="PSLEVEL3GRIDROW" align="CENTER">
+                                            <div><span class="PSHYPERLINK"><a href="#" class="PSHYPERLINK">LEC1</a></span></div>
+                                        </td>
+                                        <td class="PSLEVEL3GRIDROW" align="left">
+                                            <div><span class="PSEDITBOX_DISPONLY">讲授</span></div>
+                                        </td>
+                                        <td class="PSLEVEL3GRIDROW" align="left">
+                                            <div><span class="PSEDITBOX_DISPONLY">星期二 8:00AM - 9:50AM</span></div>
+                                        </td>
+                                        <td class="PSLEVEL3GRIDROW" align="left">
+                                            <div><span class="PSEDITBOX_DISPONLY">东1A-201</span></div>
+                                        </td>
+                                        <td class="PSLEVEL3GRIDROW" align="left">
+                                            <div><span class="PSEDITBOX_DISPONLY">王五</span></div>
+                                        </td>
+                                        <td class="PSLEVEL3GRIDROW" align="left">
+                                            <div><span class="PSEDITBOX_DISPONLY">15/09/2025 - 26/12/2025</span></div>
+                                        </td>
+                                    </tr>
+                                    <tr id="trCLASS_MTG_VW$1_row2">
+                                        <td align="right" height="19" class="PSLEVEL3GRIDROW">
+                                            <div><span class="PSEDITBOX_DISPONLY">&nbsp;</span></div>
+                                        </td>
+                                        <td class="PSLEVEL3GRIDROW" align="CENTER">
+                                            <div><span class="PSHYPERLINK"><a href="#" class="PSHYPERLINK">REC1</a></span></div>
+                                        </td>
+                                        <td class="PSLEVEL3GRIDROW" align="left">
+                                            <div><span class="PSEDITBOX_DISPONLY">习题课</span></div>
+                                        </td>
+                                        <td class="PSLEVEL3GRIDROW" align="left">
+                                            <div><span class="PSEDITBOX_DISPONLY">星期四 2:00PM - 3:50PM</span></div>
+                                        </td>
+                                        <td class="PSLEVEL3GRIDROW" align="left">
+                                            <div><span class="PSEDITBOX_DISPONLY">东1A-201</span></div>
+                                        </td>
+                                        <td class="PSLEVEL3GRIDROW" align="left">
+                                            <div><span class="PSEDITBOX_DISPONLY">王五</span></div>
+                                        </td>
+                                        <td class="PSLEVEL3GRIDROW" align="left">
+                                            <div><span class="PSEDITBOX_DISPONLY">15/09/2025 - 26/12/2025</span></div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
     </div>
+
+    <script>
+        // Simulate Tampermonkey environment for testing
+        console.log("测试页面已加载，应该会自动注入导出按钮");
+    </script>
 </body>
 </html>
