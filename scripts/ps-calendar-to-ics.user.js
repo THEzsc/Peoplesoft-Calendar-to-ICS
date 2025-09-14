@@ -415,44 +415,60 @@
 
     console.log(APP_NAME, "Parsing time string:", timeStr);
 
-    // Parse "星期一 2:00PM - 3:50PM" format
-    const match = timeStr.match(/星期([一二三四五六日])\s+(\d{1,2})\s*:\s*(\d{2})\s*(AM|PM)\s*-\s*(\d{1,2})\s*:\s*(\d{2})\s*(AM|PM)/i);
-    if (!match) {
-      console.warn(APP_NAME, "Time string does not match expected format:", timeStr);
-      return null;
+    // Helper
+    const dayMap = { '日': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6 };
+
+    // Case 1: AM/PM (e.g., 星期一 2:00PM - 3:50PM)
+    let m = timeStr.match(/星期([一二三四五六日])\s+(\d{1,2})\s*:\s*(\d{2})\s*(AM|PM)\s*-\s*(\d{1,2})\s*:\s*(\d{2})\s*(AM|PM)/i);
+    if (m) {
+      const [, d, sh, sm, sap, eh, em, eap] = m;
+      let sH = parseInt(sh, 10);
+      let eH = parseInt(eh, 10);
+      const sAP = (sap || '').toUpperCase();
+      const eAP = (eap || '').toUpperCase();
+      if (sAP === 'PM' && sH !== 12) sH += 12;
+      if (sAP === 'AM' && sH === 12) sH = 0;
+      if (eAP === 'PM' && eH !== 12) eH += 12;
+      if (eAP === 'AM' && eH === 12) eH = 0;
+      const dayOfWeek = dayMap[d];
+      if (dayOfWeek === undefined) return null;
+      const res = { days: [dayOfWeek], startTime: { hour: sH, minute: parseInt(sm, 10), h: sH, m: parseInt(sm, 10) }, endTime: { hour: eH, minute: parseInt(em, 10), h: eH, m: parseInt(em, 10) } };
+      console.log(APP_NAME, "Parsed time result (AM/PM):", res);
+      return res;
     }
 
-    const [, dayChar, startHour, startMin, startAmPm, endHour, endMin, endAmPm] = match;
-    
-    console.log(APP_NAME, "Parsed time components:", {
-      dayChar, startHour, startMin, startAmPm, endHour, endMin, endAmPm
-    });
-    
-    // Convert Chinese day to number (0 = Sunday, 1 = Monday, etc.)
-    const dayMap = { '日': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6 };
-    const dayOfWeek = dayMap[dayChar];
-    
-    if (dayOfWeek === undefined) return null;
+    // Case 2: 24-hour (e.g., 星期三 14:00 - 15:50)
+    m = timeStr.match(/星期([一二三四五六日])\s+(\d{1,2})\s*:\s*(\d{2})\s*-\s*(\d{1,2})\s*:\s*(\d{2})/);
+    if (m) {
+      const [, d, sh, sm, eh, em] = m;
+      const dayOfWeek = dayMap[d];
+      if (dayOfWeek === undefined) return null;
+      const sH = parseInt(sh, 10);
+      const eH = parseInt(eh, 10);
+      const res = { days: [dayOfWeek], startTime: { hour: sH, minute: parseInt(sm, 10), h: sH, m: parseInt(sm, 10) }, endTime: { hour: eH, minute: parseInt(em, 10), h: eH, m: parseInt(em, 10) } };
+      console.log(APP_NAME, "Parsed time result (24h):", res);
+      return res;
+    }
 
-    // Convert 12-hour to 24-hour format
-    let startHour24 = parseInt(startHour);
-    let endHour24 = parseInt(endHour);
-    
-    const sAP = (startAmPm || '').toUpperCase();
-    const eAP = (endAmPm || '').toUpperCase();
-    if (sAP === 'PM' && startHour24 !== 12) startHour24 += 12;
-    if (sAP === 'AM' && startHour24 === 12) startHour24 = 0;
-    if (eAP === 'PM' && endHour24 !== 12) endHour24 += 12;
-    if (eAP === 'AM' && endHour24 === 12) endHour24 = 0;
+    // Case 3: Chinese 上午/下午 (e.g., 星期二 上午 10:00 - 下午 11:50)
+    m = timeStr.match(/星期([一二三四五六日])\s*(上午|下午)\s*(\d{1,2})\s*:\s*(\d{2})\s*-\s*(上午|下午)\s*(\d{1,2})\s*:\s*(\d{2})/);
+    if (m) {
+      const [, d, sAPcn, sh, sm, eAPcn, eh, em] = m;
+      let sH = parseInt(sh, 10);
+      let eH = parseInt(eh, 10);
+      if (sAPcn === '下午' && sH !== 12) sH += 12;
+      if (sAPcn === '上午' && sH === 12) sH = 0;
+      if (eAPcn === '下午' && eH !== 12) eH += 12;
+      if (eAPcn === '上午' && eH === 12) eH = 0;
+      const dayOfWeek = dayMap[d];
+      if (dayOfWeek === undefined) return null;
+      const res = { days: [dayOfWeek], startTime: { hour: sH, minute: parseInt(sm, 10), h: sH, m: parseInt(sm, 10) }, endTime: { hour: eH, minute: parseInt(em, 10), h: eH, m: parseInt(em, 10) } };
+      console.log(APP_NAME, "Parsed time result (CN AM/PM):", res);
+      return res;
+    }
 
-    const result = {
-      days: [dayOfWeek],
-      startTime: { hour: startHour24, minute: parseInt(startMin), h: startHour24, m: parseInt(startMin) },
-      endTime: { hour: endHour24, minute: parseInt(endMin), h: endHour24, m: parseInt(endMin) }
-    };
-    
-    console.log(APP_NAME, "Parsed time result:", result);
-    return result;
+    console.warn(APP_NAME, "Time string does not match expected formats:", timeStr);
+    return null;
   }
 
   function detectTermTitle(doc) {
@@ -525,39 +541,21 @@
   }
 
   function generateClassDates(event) {
+    // Simple generation: only use weekday matching within start/end range
     const dates = [];
     const startDate = event.startDate;
     const endDate = event.endDate;
-    const targetDaysOfWeek = event.days;
+    const targetDaysOfWeek = Array.isArray(event.days) ? event.days : [];
 
     let currentDate = new Date(startDate);
-    
     while (currentDate <= endDate) {
-      const dayOfWeek = currentDate.getDay();
-      
-      // Check if this date matches our target days
-      let shouldAddDate = targetDaysOfWeek.includes(dayOfWeek);
-      
-      // Check for makeup classes
-      const makeupClass = isMakeupClassDay(currentDate);
-      if (makeupClass && targetDaysOfWeek.includes(makeupClass.originalDay)) {
-        shouldAddDate = true;
-      }
-      
-      // Skip if it's a holiday or special no-class event
-      if (shouldSkipDate(currentDate, dayOfWeek)) {
-        shouldAddDate = false;
-      }
-      
-      if (shouldAddDate) {
+      if (targetDaysOfWeek.includes(currentDate.getDay())) {
         dates.push(new Date(currentDate));
       }
-      
-      // Move to next day
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    console.log(APP_NAME, `为课程 "${event.summary}" 生成了 ${dates.length} 个上课日期`);
+    console.log(APP_NAME, `为课程 "${event.summary}" 生成了 ${dates.length} 个上课日期(简单模式)`);
     return dates;
   }
 
