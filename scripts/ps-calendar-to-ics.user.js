@@ -507,23 +507,68 @@
     return false;
   }
 
-  function generateSimpleClassDates(event) {
-    // Simple generation: only use weekday matching within start/end range
+  function generateBasicClassDates(event) {
+    // Step 1: Generate all basic class dates without holiday/makeup logic
     const dates = [];
     const startDate = event.startDate;
     const endDate = event.endDate;
-    const targetDaysOfWeek = Array.isArray(event.days) ? event.days : [];
+    const targetDaysOfWeek = event.days;
 
     let currentDate = new Date(startDate);
+    
     while (currentDate <= endDate) {
-      if (targetDaysOfWeek.includes(currentDate.getDay())) {
+      const dayOfWeek = currentDate.getDay();
+      
+      if (targetDaysOfWeek.includes(dayOfWeek)) {
         dates.push(new Date(currentDate));
       }
+      
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    console.log(APP_NAME, `为课程 "${event.summary}" 生成了 ${dates.length} 个上课日期(简单模式)`);
+    console.log(APP_NAME, `为课程 "${event.summary}" 生成了 ${dates.length} 个基础上课日期`);
     return dates;
+  }
+
+  function applyHolidayAndMakeupLogic(basicDates, targetDaysOfWeek) {
+    // Step 2: Apply holiday and makeup logic to basic dates
+    const finalDates = [];
+    
+    for (const date of basicDates) {
+      const dayOfWeek = date.getDay();
+      
+      // Skip if it's a holiday or special no-class event
+      if (shouldSkipDate(date, dayOfWeek)) {
+        console.log(APP_NAME, `跳过假期: ${date.toDateString()}`);
+        continue;
+      }
+      
+      finalDates.push(date);
+    }
+    
+    // Add makeup class dates
+    const startDate = basicDates[0];
+    const endDate = basicDates[basicDates.length - 1];
+    let currentDate = new Date(startDate);
+    
+    while (currentDate <= endDate) {
+      const makeupClass = isMakeupClassDay(currentDate);
+      if (makeupClass && targetDaysOfWeek.includes(makeupClass.originalDay)) {
+        console.log(APP_NAME, `添加补课日期: ${currentDate.toDateString()} (补${getChineseDayName(makeupClass.originalDay)})`);
+        finalDates.push(new Date(currentDate));
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    // Sort final dates
+    finalDates.sort((a, b) => a - b);
+    
+    return finalDates;
+  }
+
+  function getChineseDayName(dayOfWeek) {
+    const names = ['日', '一', '二', '三', '四', '五', '六'];
+    return names[dayOfWeek];
   }
 
   /**
@@ -550,71 +595,70 @@
     lines.push("END:STANDARD");
     lines.push("END:VTIMEZONE");
 
-    // Keep file small for import: skip special events for now (user request)
-    // addSpecialEventsToICS(lines, now, dtstamp);
-
-    // Add regular class events grouped using RDATE to reduce file size
-    const groupMap = new Map();
+    // Group events by unique course to reduce file size
+    const eventGroups = new Map();
+    
     for (const ev of parsed.events) {
-      const classDates = generateSimpleClassDates(ev);
-      const startKey = (ev.startTime && (ev.startTime.hour ?? ev.startTime.h) + ":" + (ev.startTime.minute ?? ev.startTime.m)) || "";
-      const endKey = (ev.endTime && (ev.endTime.hour ?? ev.endTime.h) + ":" + (ev.endTime.minute ?? ev.endTime.m)) || "";
-      const groupKey = [ev.summary, startKey, endKey, ev.location || "", ev.instructor || "", ev.classNumber || "", ev.component || "", ev.section || ""].join("|");
-      if (!groupMap.has(groupKey)) groupMap.set(groupKey, { ev, dates: [] });
-      groupMap.get(groupKey).dates.push(...classDates);
+      const groupKey = `${ev.summary}|${ev.location}|${ev.instructor}`;
+      if (!eventGroups.has(groupKey)) {
+        eventGroups.set(groupKey, []);
+      }
+      eventGroups.get(groupKey).push(ev);
     }
-
-    for (const { ev, dates } of groupMap.values()) {
-      if (!dates.length) continue;
-      dates.sort((a, b) => a - b);
-      const first = dates[0];
-      const dtStartFirst = combineDateAndTime(first, ev.startTime);
-      const dtEndFirst = combineDateAndTime(first, ev.endTime);
-      const durationMs = dtEndFirst.getTime() - dtStartFirst.getTime();
-
-      lines.push("BEGIN:VEVENT");
-      lines.push("UID:" + buildUID(ev, now, ev.summary));
-      lines.push("DTSTAMP:" + dtstamp + "Z");
-      lines.push("CREATED:" + dtstamp + "Z");
-      lines.push("LAST-MODIFIED:" + dtstamp + "Z");
-      lines.push("DTSTART;TZID=" + TZID + ":" + toLocalStringBasic(dtStartFirst));
-      if (durationMs > 0) {
-        lines.push("DURATION:" + formatDuration(durationMs));
-      } else {
+    
+    console.log(APP_NAME, `将 ${parsed.events.length} 个事件分组为 ${eventGroups.size} 组`);
+    
+    // Process each group
+    for (const [groupKey, events] of eventGroups) {
+      const firstEvent = events[0];
+      
+      // Step 1: Generate basic class dates (original schedule)
+      const basicDates = generateBasicClassDates(firstEvent);
+      
+      // Step 2: Apply holiday and makeup logic
+      const finalDates = applyHolidayAndMakeupLogic(basicDates, firstEvent.days);
+      
+      console.log(APP_NAME, `课程组 "${firstEvent.summary}": ${basicDates.length} -> ${finalDates.length} 个上课日期`);
+      
+      // Step 3: Create ICS events with RDATE for efficiency
+      if (finalDates.length > 0) {
+        const dtStartFirst = combineDateAndTime(finalDates[0], firstEvent.startTime);
+        const dtEndFirst = combineDateAndTime(finalDates[0], firstEvent.endTime);
+        
+        lines.push("BEGIN:VEVENT");
+        lines.push("UID:" + buildUID(firstEvent, now, 0));
+        lines.push("DTSTAMP:" + dtstamp + "Z");
+        lines.push("DTSTART;TZID=" + TZID + ":" + toLocalStringBasic(dtStartFirst));
         lines.push("DTEND;TZID=" + TZID + ":" + toLocalStringBasic(dtEndFirst));
+        
+        // Add additional dates using RDATE
+        if (finalDates.length > 1) {
+          const rdates = finalDates.slice(1)
+            .map(date => toLocalStringBasic(combineDateAndTime(date, firstEvent.startTime)))
+            .join(",");
+          lines.push("RDATE;TZID=" + TZID + ":" + rdates);
+        }
+        
+        lines.push("SUMMARY:" + escapeICSText(firstEvent.summary));
+        
+        if (firstEvent.location) {
+          lines.push("LOCATION:" + escapeICSText(firstEvent.location));
+        }
+        
+        // Compact description
+        let desc = [];
+        if (firstEvent.component) desc.push(`类型: ${firstEvent.component}`);
+        if (firstEvent.instructor) desc.push(`讲师: ${firstEvent.instructor}`);
+        if (desc.length > 0) {
+          lines.push("DESCRIPTION:" + escapeICSText(desc.join("\n")));
+        }
+        
+        lines.push("END:VEVENT");
       }
-      if (dates.length > 1) {
-        const rdates = dates.slice(1).map(d => toLocalStringBasic(combineDateAndTime(d, ev.startTime))).join(",");
-        lines.push("RDATE;TZID=" + TZID + ":" + rdates);
-      }
-      lines.push("SUMMARY:" + foldLine(ev.summary));
-      lines.push("STATUS:CONFIRMED");
-      lines.push("TRANSP:OPAQUE");
-      if (ev.location) {
-        lines.push("LOCATION:" + foldLine(ev.location));
-      }
-      let description = [];
-      if (ev.courseName && ev.courseName !== ev.courseCode) {
-        description.push(`课程: ${ev.courseName}`);
-      }
-      if (ev.component) {
-        description.push(`类型: ${ev.component}`);
-      }
-      if (ev.instructor) {
-        description.push(`讲师: ${ev.instructor}`);
-      }
-      if (ev.classNumber) {
-        description.push(`课程号: ${ev.classNumber}`);
-      }
-      if (description.length > 0) {
-        const desc = formatDescription(description);
-        lines.push("DESCRIPTION:" + foldLine(desc));
-      }
-      if (ev.component) {
-        lines.push("CATEGORIES:" + foldLine(ev.component));
-      }
-      lines.push("END:VEVENT");
     }
+    
+    // Add special events (holidays, campus activities) - simplified
+    addSpecialEventsToICS(lines, now, dtstamp);
 
     lines.push("END:VCALENDAR");
     
@@ -623,44 +667,22 @@
   }
 
   function addSpecialEventsToICS(lines, now, dtstamp) {
-    for (const event of ACADEMIC_CALENDAR_2025_2026.specialEvents) {
-      if (event.type === 'allday') {
-        if (event.start && event.end) {
-          // Multi-day all-day event
-          let currentDate = new Date(event.start);
-          while (currentDate <= event.end) {
-            lines.push("BEGIN:VEVENT");
-            lines.push("UID:" + buildSpecialEventUID(event, now, currentDate));
-            lines.push("DTSTAMP:" + dtstamp + "Z");
-            lines.push("CREATED:" + dtstamp + "Z");
-            lines.push("LAST-MODIFIED:" + dtstamp + "Z");
-            lines.push("DTSTART;VALUE=DATE:" + toDateString(currentDate));
-            lines.push("DTEND;VALUE=DATE:" + toDateString(new Date(currentDate.getTime() + 24 * 60 * 60 * 1000)));
-            lines.push("SUMMARY:" + foldLine(event.name));
-            lines.push("DESCRIPTION:" + foldLine("学校特殊事件"));
-            lines.push("STATUS:CONFIRMED");
-            lines.push("TRANSP:TRANSPARENT");
-            lines.push("CATEGORIES:" + foldLine("学校事件"));
-            lines.push("END:VEVENT");
-            currentDate.setDate(currentDate.getDate() + 1);
-          }
-        } else if (event.date) {
-          // Single-day all-day event
-          lines.push("BEGIN:VEVENT");
-          lines.push("UID:" + buildSpecialEventUID(event, now));
-          lines.push("DTSTAMP:" + dtstamp + "Z");
-          lines.push("CREATED:" + dtstamp + "Z");
-          lines.push("LAST-MODIFIED:" + dtstamp + "Z");
-          lines.push("DTSTART;VALUE=DATE:" + toDateString(event.date));
-          lines.push("DTEND;VALUE=DATE:" + toDateString(new Date(event.date.getTime() + 24 * 60 * 60 * 1000)));
-          lines.push("SUMMARY:" + foldLine(event.name));
-          lines.push("DESCRIPTION:" + foldLine("学校特殊事件"));
-          lines.push("STATUS:CONFIRMED");
-          lines.push("TRANSP:TRANSPARENT");
-          lines.push("CATEGORIES:" + foldLine("学校事件"));
-          lines.push("END:VEVENT");
-        }
-      }
+    // Only add the most important events to keep file small
+    const importantEvents = [
+      { date: "2025-08-24", name: "本科生开学典礼" },
+      { date: "2025-09-15", name: "秋冬学期课程开始" },
+      { date: "2025-12-26", name: "课程结束" },
+      { date: "2025-12-31", name: "浙江大学学生节" }
+    ];
+    
+    for (const event of importantEvents) {
+      lines.push("BEGIN:VEVENT");
+      lines.push("UID:" + event.name.replace(/\s/g, '') + "@ps-calendar");
+      lines.push("DTSTAMP:" + dtstamp + "Z");
+      lines.push("DTSTART;VALUE=DATE:" + event.date.replace(/-/g, ''));
+      lines.push("SUMMARY:" + escapeICSText(event.name));
+      lines.push("TRANSP:TRANSPARENT");
+      lines.push("END:VEVENT");
     }
   }
 
@@ -671,7 +693,7 @@
       ev.section || "",
       ev.location,
       ev.instructor,
-      ev.days && ev.days.join ? ev.days.join("") : "",
+      ev.days.join(""),
       index.toString()
     ].filter(Boolean).join("-");
     
@@ -716,14 +738,21 @@
 
   function combineDateAndTime(date, time) {
     const result = new Date(date);
-    const hour = time.hour || time.h;
-    const minute = time.minute || time.m;
     
-    if (hour === undefined || minute === undefined) {
-      return result; // Return date without time modification
+    if (!time || typeof time !== 'object') {
+      console.error(APP_NAME, "Invalid time object:", time);
+      return result;
     }
     
-    result.setHours(hour, minute, 0, 0);
+    const hour = time.hour !== undefined ? time.hour : time.h;
+    const minute = time.minute !== undefined ? time.minute : time.m;
+    
+    if (hour === undefined || minute === undefined || isNaN(hour) || isNaN(minute)) {
+      console.error(APP_NAME, "Invalid time values:", { hour, minute, originalTime: time });
+      return result;
+    }
+    
+    result.setHours(Number(hour), Number(minute), 0, 0);
     return result;
   }
 
@@ -734,18 +763,6 @@
            date.getHours().toString().padStart(2, '0') +
            date.getMinutes().toString().padStart(2, '0') +
            date.getSeconds().toString().padStart(2, '0');
-  }
-
-  function formatDuration(ms) {
-    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    let s = 'PT';
-    if (hours) s += hours + 'H';
-    if (minutes) s += minutes + 'M';
-    if (seconds || (!hours && !minutes)) s += seconds + 'S';
-    return s;
   }
 
   function toUTCStringBasic(date) {
