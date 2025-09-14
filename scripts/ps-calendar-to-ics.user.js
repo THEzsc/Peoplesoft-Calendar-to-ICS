@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PS Calendar to ICS (ZJU)
 // @namespace    https://github.com/yourname/ps-calendar-to-ics
-// @version      0.3.1
+// @version      0.3.2
 // @description  将 PeopleSoft「我的每周课程表-列表查看」导出为 ICS 文件（支持中文/英文标签，Asia/Shanghai）
 // @author       You
 // @match        https://scrsprd.zju.edu.cn/psc/CSPRD/EMPLOYEE/HRMS/*
@@ -364,10 +364,11 @@
       return null;
     }
 
-    // Build event summary using course code + component
-    let summary = courseCode;
+    // Build event summary using course code + component (calendar-friendly format)
+    let summary = courseCode || "课程";
     if (component) {
-      summary += ` [${component}]`;
+      // Use more calendar-friendly format instead of square brackets
+      summary += ` - ${component}`;
     }
     if (section) {
       summary += ` (${section})`;
@@ -581,16 +582,40 @@
         lines.push("BEGIN:VEVENT");
         lines.push("UID:" + buildUID(ev, now, i));
         lines.push("DTSTAMP:" + dtstamp + "Z");
+        lines.push("CREATED:" + dtstamp + "Z");
+        lines.push("LAST-MODIFIED:" + dtstamp + "Z");
         lines.push("DTSTART;TZID=" + TZID + ":" + toLocalStringBasic(dtStartLocal));
         lines.push("DTEND;TZID=" + TZID + ":" + toLocalStringBasic(dtEndLocal));
         lines.push("SUMMARY:" + foldLine(ev.summary));
+        lines.push("STATUS:CONFIRMED");
+        lines.push("TRANSP:OPAQUE");
         
         if (ev.location) {
           lines.push("LOCATION:" + foldLine(ev.location));
         }
         
+        // Build comprehensive description
+        let description = [];
+        if (ev.courseName && ev.courseName !== ev.courseCode) {
+          description.push(`课程: ${ev.courseName}`);
+        }
+        if (ev.component) {
+          description.push(`类型: ${ev.component}`);
+        }
         if (ev.instructor) {
-          lines.push("DESCRIPTION:" + foldLine(`讲师: ${ev.instructor}`));
+          description.push(`讲师: ${ev.instructor}`);
+        }
+        if (ev.classNumber) {
+          description.push(`课程号: ${ev.classNumber}`);
+        }
+        
+        if (description.length > 0) {
+          lines.push("DESCRIPTION:" + foldLine(description.join("\\n")));
+        }
+        
+        // Add categories for better organization
+        if (ev.component) {
+          lines.push("CATEGORIES:" + foldLine(ev.component));
         }
         
         lines.push("END:VEVENT");
@@ -613,10 +638,15 @@
             lines.push("BEGIN:VEVENT");
             lines.push("UID:" + buildSpecialEventUID(event, now, currentDate));
             lines.push("DTSTAMP:" + dtstamp + "Z");
+            lines.push("CREATED:" + dtstamp + "Z");
+            lines.push("LAST-MODIFIED:" + dtstamp + "Z");
             lines.push("DTSTART;VALUE=DATE:" + toDateString(currentDate));
             lines.push("DTEND;VALUE=DATE:" + toDateString(new Date(currentDate.getTime() + 24 * 60 * 60 * 1000)));
             lines.push("SUMMARY:" + foldLine(event.name));
             lines.push("DESCRIPTION:" + foldLine("学校特殊事件"));
+            lines.push("STATUS:CONFIRMED");
+            lines.push("TRANSP:TRANSPARENT");
+            lines.push("CATEGORIES:" + foldLine("学校事件"));
             lines.push("END:VEVENT");
             currentDate.setDate(currentDate.getDate() + 1);
           }
@@ -625,10 +655,15 @@
           lines.push("BEGIN:VEVENT");
           lines.push("UID:" + buildSpecialEventUID(event, now));
           lines.push("DTSTAMP:" + dtstamp + "Z");
+          lines.push("CREATED:" + dtstamp + "Z");
+          lines.push("LAST-MODIFIED:" + dtstamp + "Z");
           lines.push("DTSTART;VALUE=DATE:" + toDateString(event.date));
           lines.push("DTEND;VALUE=DATE:" + toDateString(new Date(event.date.getTime() + 24 * 60 * 60 * 1000)));
           lines.push("SUMMARY:" + foldLine(event.name));
           lines.push("DESCRIPTION:" + foldLine("学校特殊事件"));
+          lines.push("STATUS:CONFIRMED");
+          lines.push("TRANSP:TRANSPARENT");
+          lines.push("CATEGORIES:" + foldLine("学校事件"));
           lines.push("END:VEVENT");
         }
       }
@@ -718,6 +753,10 @@
   function foldLine(text) {
     // ICS line folding: max 75 octets per line
     if (!text) return "";
+    
+    // Escape special characters for better calendar compatibility
+    text = escapeICSText(text);
+    
     const maxLen = 73; // Leave room for CRLF
     if (text.length <= maxLen) return text;
     
@@ -733,6 +772,18 @@
       }
     }
     return lines.join("\r\n");
+  }
+
+  function escapeICSText(text) {
+    if (!text) return "";
+    
+    // RFC 5545 compliant text escaping
+    return text
+      .replace(/\\/g, "\\\\")    // Escape backslashes first
+      .replace(/,/g, "\\,")      // Escape commas
+      .replace(/;/g, "\\;")      // Escape semicolons
+      .replace(/\n/g, "\\n")     // Escape newlines
+      .replace(/\r/g, "");       // Remove carriage returns
   }
 
   function simpleHash(str) {
