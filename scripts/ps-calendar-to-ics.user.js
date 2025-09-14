@@ -74,22 +74,12 @@
    * Main bootstrap function
    */
   function bootstrap() {
-    console.log(APP_NAME, "脚本启动 v0.3.9", {
-      url: window.location.href,
-      userAgent: navigator.userAgent,
-      tampermonkey: typeof GM_info !== 'undefined' ? GM_info.version : 'unknown'
-    });
-
-    // 强制注入调试按钮（总是可见）
-    forceInjectButton();
-
     tryInjectForDocument(window.document);
     observeForSchedule(window.document);
 
     // Handle target iframes
     const iframeSelector = "iframe.ps_target-iframe";
     const iframeList = Array.from(document.querySelectorAll(iframeSelector));
-    console.log(APP_NAME, `找到 ${iframeList.length} 个目标iframe`);
     iframeList.forEach((iframe) => attachIframeListener(iframe));
 
     // Observe future iframes
@@ -111,63 +101,6 @@
       childList: true,
       subtree: true,
     });
-
-    // 延迟重试机制
-    setTimeout(() => {
-      console.log(APP_NAME, "5秒后重试注入按钮");
-      tryInjectForDocument(window.document);
-    }, 5000);
-
-    console.log(APP_NAME, "脚本已启动，监听课程表页面");
-  }
-
-  /**
-   * 强制注入调试按钮（总是可见）
-   */
-  function forceInjectButton() {
-    if (document.querySelector("#ps-ics-debug-btn")) return;
-
-    const btn = document.createElement("button");
-    btn.id = "ps-ics-debug-btn";
-    btn.textContent = "🔧 PS Calendar Debug";
-    btn.style.cssText = `
-      position: fixed !important;
-      top: 10px !important;
-      right: 10px !important;
-      z-index: 999999 !important;
-      background: #ff6b6b !important;
-      color: white !important;
-      border: none !important;
-      padding: 10px 15px !important;
-      border-radius: 5px !important;
-      font-size: 12px !important;
-      cursor: pointer !important;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.3) !important;
-    `;
-
-    btn.addEventListener("click", () => {
-      const info = {
-        脚本版本: "0.3.9",
-        当前URL: window.location.href,
-        页面标题: document.title,
-        找到的课程表元素: findScheduleRoot(document) ? "✅ 找到" : "❌ 未找到",
-        iframe数量: document.querySelectorAll("iframe").length,
-        Tampermonkey: typeof GM_info !== 'undefined' ? GM_info.version : "未检测到"
-      };
-      
-      alert("PS Calendar to ICS 调试信息:\\n\\n" + 
-        Object.entries(info).map(([k, v]) => `${k}: ${v}`).join('\\n'));
-      
-      // 尝试强制导出
-      if (findScheduleRoot(document)) {
-        exportSchedule(document);
-      } else {
-        alert("未找到课程表数据，请确认处于'我的每周课程表-列表查看'页面");
-      }
-    });
-
-    document.body.appendChild(btn);
-    console.log(APP_NAME, "调试按钮已注入");
   }
 
   function attachIframeListener(iframe) {
@@ -580,44 +513,42 @@
     const endDate = event.endDate;
     const targetDaysOfWeek = event.days;
     
-    // Calculate total weeks
-    const totalDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-    const totalWeeks = Math.ceil(totalDays / 7);
-    
     // Find the first occurrence date
     let firstOccurrence = new Date(startDate);
     while (!targetDaysOfWeek.includes(firstOccurrence.getDay())) {
       firstOccurrence.setDate(firstOccurrence.getDate() + 1);
     }
     
-    // Generate all basic dates to find exceptions
-    const basicDates = [];
-    const exceptionDates = [];
-    const makeupEvents = [];
-    
+    // Generate all potential class dates to analyze pattern
+    const potentialDates = [];
     let currentDate = new Date(firstOccurrence);
-    let weekCount = 0;
     
-    while (currentDate <= endDate && weekCount < totalWeeks) {
+    while (currentDate <= endDate) {
       const dayOfWeek = currentDate.getDay();
-      
       if (targetDaysOfWeek.includes(dayOfWeek)) {
-        basicDates.push(new Date(currentDate));
-        
-        // Check if this date should be excluded (holiday)
-        if (shouldSkipDate(currentDate, dayOfWeek)) {
-          exceptionDates.push(new Date(currentDate));
-        }
-        
-        // Move to next week
-        currentDate.setDate(currentDate.getDate() + 7);
-        weekCount++;
-      } else {
-        currentDate.setDate(currentDate.getDate() + 1);
+        potentialDates.push(new Date(currentDate));
       }
+      currentDate.setDate(currentDate.getDate() + 7);
     }
     
+    // Analyze biweekly pattern by checking actual class dates
+    const actualClassDates = [];
+    const exceptionDates = [];
+    
+    for (const date of potentialDates) {
+      // Skip holidays
+      if (shouldSkipDate(date, date.getDay())) {
+        exceptionDates.push(new Date(date));
+        continue;
+      }
+      actualClassDates.push(new Date(date));
+    }
+    
+    // Detect biweekly pattern
+    const biweeklyPattern = detectBiweeklyPattern(actualClassDates, firstOccurrence);
+    
     // Find makeup classes
+    const makeupEvents = [];
     let checkDate = new Date(startDate);
     while (checkDate <= endDate) {
       const makeupClass = isMakeupClassDay(checkDate);
@@ -632,11 +563,65 @@
     }
     
     return {
-      firstOccurrence,
-      weekCount: Math.max(1, weekCount),
+      firstOccurrence: biweeklyPattern.adjustedStart || firstOccurrence,
+      weekCount: biweeklyPattern.count,
       dayOfWeek: firstOccurrence.getDay(),
+      interval: biweeklyPattern.interval,
       exceptionDates,
       makeupEvents
+    };
+  }
+  
+  function detectBiweeklyPattern(classDates, firstOccurrence) {
+    if (classDates.length <= 1) {
+      return { count: classDates.length, interval: 1 };
+    }
+    
+    // Calculate intervals between consecutive class dates
+    const intervals = [];
+    for (let i = 1; i < classDates.length; i++) {
+      const daysDiff = Math.round((classDates[i] - classDates[i-1]) / (1000 * 60 * 60 * 24));
+      const weeksDiff = Math.round(daysDiff / 7);
+      intervals.push(weeksDiff);
+    }
+    
+    console.log(APP_NAME, "课程间隔周数:", intervals);
+    
+    // Check for consistent biweekly pattern (every 2 weeks)
+    if (intervals.length >= 2) {
+      const avgInterval = intervals.reduce((sum, interval) => sum + interval, 0) / intervals.length;
+      const isConsistentBiweekly = Math.abs(avgInterval - 2) < 0.5 && 
+                                   intervals.every(interval => Math.abs(interval - 2) <= 1);
+      
+      if (isConsistentBiweekly) {
+        console.log(APP_NAME, "检测到单双周模式，平均间隔:", avgInterval, "周");
+        return {
+          count: classDates.length,
+          interval: 2,
+          adjustedStart: classDates[0], // Use actual first class date
+          useRdate: true // For irregular patterns, use RDATE instead of RRULE
+        };
+      }
+      
+      // Check for other irregular patterns
+      const hasIrregularPattern = intervals.some(interval => interval !== 1);
+      if (hasIrregularPattern) {
+        console.log(APP_NAME, "检测到不规则上课模式，使用RDATE");
+        return {
+          count: classDates.length,
+          interval: 1,
+          adjustedStart: classDates[0],
+          useRdate: true // Use RDATE for irregular patterns
+        };
+      }
+    }
+    
+    // Default: weekly pattern
+    const totalWeeks = Math.ceil((classDates[classDates.length - 1] - classDates[0]) / (1000 * 60 * 60 * 24 * 7)) + 1;
+    return {
+      count: totalWeeks,
+      interval: 1,
+      useRdate: false
     };
   }
   
@@ -703,6 +688,16 @@
       // Generate RRULE and exceptions
       const rruleData = generateRRuleAndExceptions(representativeEvent);
       
+      // Also get potential dates for RDATE generation
+      const potentialDates = [];
+      let checkDate = new Date(rruleData.firstOccurrence);
+      while (checkDate <= representativeEvent.endDate) {
+        if (representativeEvent.days.includes(checkDate.getDay())) {
+          potentialDates.push(new Date(checkDate));
+        }
+        checkDate.setDate(checkDate.getDate() + 7);
+      }
+      
       console.log(APP_NAME, `课程 "${representativeEvent.summary}": ${rruleData.weekCount} 周, ${rruleData.exceptionDates.length} 个例外, ${rruleData.makeupEvents.length} 个补课`);
       
       // Create main recurring event
@@ -715,9 +710,33 @@
       lines.push("DTSTART;TZID=" + TZID + ":" + toLocalStringBasic(dtStart));
       lines.push("DTEND;TZID=" + TZID + ":" + toLocalStringBasic(dtEnd));
       
-      // Add RRULE
-      const dayName = getDayName(rruleData.dayOfWeek);
-      lines.push(`RRULE:FREQ=WEEKLY;COUNT=${rruleData.weekCount};BYDAY=${dayName}`);
+      // Add RRULE or RDATE based on pattern detection
+      if (rruleData.useRdate) {
+        // For irregular patterns, use RDATE to specify exact dates
+        const allClassDates = [];
+        for (const date of potentialDates) {
+          if (!shouldSkipDate(date, date.getDay())) {
+            allClassDates.push(new Date(date));
+          }
+        }
+        
+        if (allClassDates.length > 1) {
+          const rdates = allClassDates.slice(1)
+            .map(date => toLocalStringBasic(combineDateAndTime(date, representativeEvent.startTime)))
+            .join(",");
+          lines.push(`RDATE;TZID=${TZID}:${rdates}`);
+        }
+        console.log(APP_NAME, `使用RDATE模式，${allClassDates.length}个上课日期`);
+      } else {
+        // For regular patterns, use RRULE
+        const dayName = getDayName(rruleData.dayOfWeek);
+        let rruleStr = `RRULE:FREQ=WEEKLY;COUNT=${rruleData.weekCount};BYDAY=${dayName}`;
+        if (rruleData.interval && rruleData.interval > 1) {
+          rruleStr += `;INTERVAL=${rruleData.interval}`;
+        }
+        lines.push(rruleStr);
+        console.log(APP_NAME, `使用RRULE模式，${rruleData.weekCount}周，间隔${rruleData.interval}`);
+      }
       
       // Add EXDATE for holidays
       if (rruleData.exceptionDates.length > 0) {
