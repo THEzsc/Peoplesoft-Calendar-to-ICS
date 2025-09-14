@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PS Calendar to ICS (ZJU)
 // @namespace    https://github.com/yourname/ps-calendar-to-ics
-// @version      0.3.7
+// @version      0.3.8
 // @description  将 PeopleSoft「我的每周课程表-列表查看」导出为 ICS 文件（支持中文/英文标签，Asia/Shanghai）
 // @author       You
 // @match        https://scrsprd.zju.edu.cn/psc/CSPRD/EMPLOYEE/HRMS/*
@@ -608,10 +608,18 @@
     lines.push("END:VTIMEZONE");
 
     // Group events by unique course to reduce file size
+    // Use base course info without section to avoid duplicates
     const eventGroups = new Map();
     
     for (const ev of parsed.events) {
-      const groupKey = `${ev.summary}|${ev.location}|${ev.instructor}|${ev.days.join(',')}`;
+      // Build base summary without section for grouping
+      let baseSummary = ev.courseCode || "课程";
+      if (ev.component) {
+        baseSummary += ` - ${ev.component}`;
+      }
+      // Don't include section in grouping key to merge similar courses
+      
+      const groupKey = `${baseSummary}|${ev.location}|${ev.instructor}|${ev.days.join(',')}`;
       if (!eventGroups.has(groupKey)) {
         eventGroups.set(groupKey, []);
       }
@@ -622,19 +630,20 @@
     
     // Process each group using RRULE + EXDATE
     for (const [groupKey, events] of eventGroups) {
-      const firstEvent = events[0];
+      // Prefer events with section info (more specific) over those without
+      const representativeEvent = events.find(ev => ev.section) || events[0];
       
       // Generate RRULE and exceptions
-      const rruleData = generateRRuleAndExceptions(firstEvent);
+      const rruleData = generateRRuleAndExceptions(representativeEvent);
       
-      console.log(APP_NAME, `课程 "${firstEvent.summary}": ${rruleData.weekCount} 周, ${rruleData.exceptionDates.length} 个例外, ${rruleData.makeupEvents.length} 个补课`);
+      console.log(APP_NAME, `课程 "${representativeEvent.summary}": ${rruleData.weekCount} 周, ${rruleData.exceptionDates.length} 个例外, ${rruleData.makeupEvents.length} 个补课`);
       
       // Create main recurring event
-      const dtStart = combineDateAndTime(rruleData.firstOccurrence, firstEvent.startTime);
-      const dtEnd = combineDateAndTime(rruleData.firstOccurrence, firstEvent.endTime);
+      const dtStart = combineDateAndTime(rruleData.firstOccurrence, representativeEvent.startTime);
+      const dtEnd = combineDateAndTime(rruleData.firstOccurrence, representativeEvent.endTime);
       
       lines.push("BEGIN:VEVENT");
-      lines.push("UID:" + buildUID(firstEvent, now, 0));
+      lines.push("UID:" + buildUID(representativeEvent, now, 0));
       lines.push("DTSTAMP:" + dtstamp + "Z");
       lines.push("DTSTART;TZID=" + TZID + ":" + toLocalStringBasic(dtStart));
       lines.push("DTEND;TZID=" + TZID + ":" + toLocalStringBasic(dtEnd));
@@ -646,21 +655,21 @@
       // Add EXDATE for holidays
       if (rruleData.exceptionDates.length > 0) {
         const exdates = rruleData.exceptionDates
-          .map(date => toLocalStringBasic(combineDateAndTime(date, firstEvent.startTime)))
+          .map(date => toLocalStringBasic(combineDateAndTime(date, representativeEvent.startTime)))
           .join(",");
         lines.push(`EXDATE;TZID=${TZID}:${exdates}`);
       }
       
-      lines.push("SUMMARY:" + escapeICSText(firstEvent.summary));
+      lines.push("SUMMARY:" + escapeICSText(representativeEvent.summary));
       
-      if (firstEvent.location) {
-        lines.push("LOCATION:" + escapeICSText(firstEvent.location));
+      if (representativeEvent.location) {
+        lines.push("LOCATION:" + escapeICSText(representativeEvent.location));
       }
       
       // Compact description
       let desc = [];
-      if (firstEvent.component) desc.push(`类型: ${firstEvent.component}`);
-      if (firstEvent.instructor) desc.push(`讲师: ${firstEvent.instructor}`);
+      if (representativeEvent.component) desc.push(`类型: ${representativeEvent.component}`);
+      if (representativeEvent.instructor) desc.push(`讲师: ${representativeEvent.instructor}`);
       if (desc.length > 0) {
         lines.push("DESCRIPTION:" + escapeICSText(desc.join("\n")));
       }
@@ -670,23 +679,23 @@
       // Add makeup events as separate events
       for (let i = 0; i < rruleData.makeupEvents.length; i++) {
         const makeupEvent = rruleData.makeupEvents[i];
-        const makeupStart = combineDateAndTime(makeupEvent.date, firstEvent.startTime);
-        const makeupEnd = combineDateAndTime(makeupEvent.date, firstEvent.endTime);
+        const makeupStart = combineDateAndTime(makeupEvent.date, representativeEvent.startTime);
+        const makeupEnd = combineDateAndTime(makeupEvent.date, representativeEvent.endTime);
         
         lines.push("BEGIN:VEVENT");
-        lines.push("UID:" + buildUID(firstEvent, now, `makeup-${i}`));
+        lines.push("UID:" + buildUID(representativeEvent, now, `makeup-${i}`));
         lines.push("DTSTAMP:" + dtstamp + "Z");
         lines.push("DTSTART;TZID=" + TZID + ":" + toLocalStringBasic(makeupStart));
         lines.push("DTEND;TZID=" + TZID + ":" + toLocalStringBasic(makeupEnd));
-        lines.push("SUMMARY:" + escapeICSText(firstEvent.summary + " (调课)"));
+        lines.push("SUMMARY:" + escapeICSText(representativeEvent.summary + " (调课)"));
         
-        if (firstEvent.location) {
-          lines.push("LOCATION:" + escapeICSText(firstEvent.location));
+        if (representativeEvent.location) {
+          lines.push("LOCATION:" + escapeICSText(representativeEvent.location));
         }
         
         let makeupDesc = [];
-        if (firstEvent.component) makeupDesc.push(`类型: ${firstEvent.component}`);
-        if (firstEvent.instructor) makeupDesc.push(`讲师: ${firstEvent.instructor}`);
+        if (representativeEvent.component) makeupDesc.push(`类型: ${representativeEvent.component}`);
+        if (representativeEvent.instructor) makeupDesc.push(`讲师: ${representativeEvent.instructor}`);
         makeupDesc.push(`注: ${makeupEvent.note}`);
         
         lines.push("DESCRIPTION:" + escapeICSText(makeupDesc.join("\n")));
