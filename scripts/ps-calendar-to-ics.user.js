@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PS Calendar to ICS (ZJU)
 // @namespace    https://github.com/yourname/ps-calendar-to-ics
-// @version      0.3.6
+// @version      0.3.5
 // @description  将 PeopleSoft「我的每周课程表-列表查看」导出为 ICS 文件（支持中文/英文标签，Asia/Shanghai）
 // @author       You
 // @match        https://scrsprd.zju.edu.cn/psc/CSPRD/EMPLOYEE/HRMS/*
@@ -249,10 +249,13 @@
     const events = [];
     let termTitle = detectTermTitle(doc);
 
-    // Find all course containers
-    const courseContainers = Array.from(doc.querySelectorAll('div[id*="DERIVED_REGFRM1_DESCR20"]'));
+    // Scope to the main schedule root to avoid duplicates elsewhere on the page
+    const scheduleRoot = findScheduleRoot(doc) || doc;
+
+    // Find all course containers under the schedule root only
+    const courseContainers = Array.from(scheduleRoot.querySelectorAll('div[id*="DERIVED_REGFRM1_DESCR20"]'));
     
-    console.log(APP_NAME, `找到 ${courseContainers.length} 个课程容器`);
+    console.log(APP_NAME, `找到 ${courseContainers.length} 个课程容器(已限定范围)`);
 
     for (const container of courseContainers) {
       try {
@@ -410,14 +413,20 @@
   function parseDateTimeInfo(timeStr) {
     if (!timeStr) return null;
 
+    console.log(APP_NAME, "Parsing time string:", timeStr);
+
     // Parse "星期一 2:00PM - 3:50PM" format
-    const match = timeStr.match(/星期([一二三四五六日])\s+(\d+):(\d+)(AM|PM)\s*-\s*(\d+):(\d+)(AM|PM)/);
+    const match = timeStr.match(/星期([一二三四五六日])\s+(\d{1,2})\s*:\s*(\d{2})\s*(AM|PM)\s*-\s*(\d{1,2})\s*:\s*(\d{2})\s*(AM|PM)/i);
     if (!match) {
       console.warn(APP_NAME, "Time string does not match expected format:", timeStr);
       return null;
     }
 
     const [, dayChar, startHour, startMin, startAmPm, endHour, endMin, endAmPm] = match;
+    
+    console.log(APP_NAME, "Parsed time components:", {
+      dayChar, startHour, startMin, startAmPm, endHour, endMin, endAmPm
+    });
     
     // Convert Chinese day to number (0 = Sunday, 1 = Monday, etc.)
     const dayMap = { '日': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6 };
@@ -429,17 +438,20 @@
     let startHour24 = parseInt(startHour);
     let endHour24 = parseInt(endHour);
     
-    if (startAmPm === 'PM' && startHour24 !== 12) startHour24 += 12;
-    if (startAmPm === 'AM' && startHour24 === 12) startHour24 = 0;
-    if (endAmPm === 'PM' && endHour24 !== 12) endHour24 += 12;
-    if (endAmPm === 'AM' && endHour24 === 12) endHour24 = 0;
+    const sAP = (startAmPm || '').toUpperCase();
+    const eAP = (endAmPm || '').toUpperCase();
+    if (sAP === 'PM' && startHour24 !== 12) startHour24 += 12;
+    if (sAP === 'AM' && startHour24 === 12) startHour24 = 0;
+    if (eAP === 'PM' && endHour24 !== 12) endHour24 += 12;
+    if (eAP === 'AM' && endHour24 === 12) endHour24 = 0;
 
     const result = {
       days: [dayOfWeek],
-      startTime: { hour: startHour24, minute: parseInt(startMin) },
-      endTime: { hour: endHour24, minute: parseInt(endMin) }
+      startTime: { hour: startHour24, minute: parseInt(startMin), h: startHour24, m: parseInt(startMin) },
+      endTime: { hour: endHour24, minute: parseInt(endMin), h: endHour24, m: parseInt(endMin) }
     };
     
+    console.log(APP_NAME, "Parsed time result:", result);
     return result;
   }
 
@@ -512,30 +524,6 @@
     return false;
   }
 
-  function generateSimpleClassDates(event) {
-    const dates = [];
-    const startDate = event.startDate;
-    const endDate = event.endDate;
-    const targetDaysOfWeek = event.days;
-
-    let currentDate = new Date(startDate);
-    
-    while (currentDate <= endDate) {
-      const dayOfWeek = currentDate.getDay();
-      
-      // Simply check if this date matches our target days (no holiday/makeup logic for now)
-      if (targetDaysOfWeek.includes(dayOfWeek)) {
-        dates.push(new Date(currentDate));
-      }
-      
-      // Move to next day
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    console.log(APP_NAME, `为课程 "${event.summary}" 生成了 ${dates.length} 个上课日期`);
-    return dates;
-  }
-
   function generateClassDates(event) {
     const dates = [];
     const startDate = event.startDate;
@@ -597,17 +585,29 @@
     lines.push("END:STANDARD");
     lines.push("END:VTIMEZONE");
 
-    // Skip special events for now to reduce file size
+    // Keep file small for import: skip special events for now (user request)
     // addSpecialEventsToICS(lines, now, dtstamp);
 
-    // Add regular class events with simple date generation (no holidays/makeup for now)
+    // Add regular class events
+    // Deduplicate by (summary + start/end time + location + weekday)
+    const seenKeys = new Set();
     for (const ev of parsed.events) {
-      const classDates = generateSimpleClassDates(ev);
+      const classDates = generateClassDates(ev);
       
       for (let i = 0; i < classDates.length; i++) {
         const classDate = classDates[i];
         const dtStartLocal = combineDateAndTime(classDate, ev.startTime);
         const dtEndLocal = combineDateAndTime(classDate, ev.endTime);
+
+        const key = [
+          ev.summary,
+          ev.startTime && (ev.startTime.hour ?? ev.startTime.h) + ":" + (ev.startTime.minute ?? ev.startTime.m),
+          ev.endTime && (ev.endTime.hour ?? ev.endTime.h) + ":" + (ev.endTime.minute ?? ev.endTime.m),
+          ev.location || "",
+          classDate.getDay()
+        ].join("|");
+        if (seenKeys.has(key) && i > 0) continue;
+        seenKeys.add(key);
 
         lines.push("BEGIN:VEVENT");
         lines.push("UID:" + buildUID(ev, now, i));
@@ -639,9 +639,11 @@
           description.push(`课程号: ${ev.classNumber}`);
         }
         
-         if (description.length > 0) {
-           lines.push("DESCRIPTION:" + foldLine(description.join("\\n")));
-         }
+        if (description.length > 0) {
+          // Use single-escaped newlines as requested
+          const desc = description.join("\n");
+          lines.push("DESCRIPTION:" + foldLine(desc));
+        }
         
         // Add categories for better organization
         if (ev.component) {
@@ -752,6 +754,14 @@
 
   function combineDateAndTime(date, time) {
     const result = new Date(date);
+    
+    // Debug logging to identify the issue
+    console.log(APP_NAME, "combineDateAndTime debug:", {
+      date: date,
+      time: time,
+      hour: time.hour || time.h,
+      minute: time.minute || time.m
+    });
     
     const hour = time.hour || time.h;
     const minute = time.minute || time.m;
