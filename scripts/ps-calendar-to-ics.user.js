@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PS Calendar to ICS (ZJU)
 // @namespace    https://github.com/yourname/ps-calendar-to-ics
-// @version      0.3.8
+// @version      0.3.9
 // @description  将 PeopleSoft「我的每周课程表-列表查看」导出为 ICS 文件（支持中文/英文标签，Asia/Shanghai）
 // @author       You
 // @match        https://scrsprd.zju.edu.cn/psc/CSPRD/EMPLOYEE/HRMS/*
@@ -74,12 +74,22 @@
    * Main bootstrap function
    */
   function bootstrap() {
+    console.log(APP_NAME, "脚本启动 v0.3.9", {
+      url: window.location.href,
+      userAgent: navigator.userAgent,
+      tampermonkey: typeof GM_info !== 'undefined' ? GM_info.version : 'unknown'
+    });
+
+    // 强制注入调试按钮（总是可见）
+    forceInjectButton();
+
     tryInjectForDocument(window.document);
     observeForSchedule(window.document);
 
     // Handle target iframes
     const iframeSelector = "iframe.ps_target-iframe";
     const iframeList = Array.from(document.querySelectorAll(iframeSelector));
+    console.log(APP_NAME, `找到 ${iframeList.length} 个目标iframe`);
     iframeList.forEach((iframe) => attachIframeListener(iframe));
 
     // Observe future iframes
@@ -101,6 +111,63 @@
       childList: true,
       subtree: true,
     });
+
+    // 延迟重试机制
+    setTimeout(() => {
+      console.log(APP_NAME, "5秒后重试注入按钮");
+      tryInjectForDocument(window.document);
+    }, 5000);
+
+    console.log(APP_NAME, "脚本已启动，监听课程表页面");
+  }
+
+  /**
+   * 强制注入调试按钮（总是可见）
+   */
+  function forceInjectButton() {
+    if (document.querySelector("#ps-ics-debug-btn")) return;
+
+    const btn = document.createElement("button");
+    btn.id = "ps-ics-debug-btn";
+    btn.textContent = "🔧 PS Calendar Debug";
+    btn.style.cssText = `
+      position: fixed !important;
+      top: 10px !important;
+      right: 10px !important;
+      z-index: 999999 !important;
+      background: #ff6b6b !important;
+      color: white !important;
+      border: none !important;
+      padding: 10px 15px !important;
+      border-radius: 5px !important;
+      font-size: 12px !important;
+      cursor: pointer !important;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3) !important;
+    `;
+
+    btn.addEventListener("click", () => {
+      const info = {
+        脚本版本: "0.3.9",
+        当前URL: window.location.href,
+        页面标题: document.title,
+        找到的课程表元素: findScheduleRoot(document) ? "✅ 找到" : "❌ 未找到",
+        iframe数量: document.querySelectorAll("iframe").length,
+        Tampermonkey: typeof GM_info !== 'undefined' ? GM_info.version : "未检测到"
+      };
+      
+      alert("PS Calendar to ICS 调试信息:\\n\\n" + 
+        Object.entries(info).map(([k, v]) => `${k}: ${v}`).join('\\n'));
+      
+      // 尝试强制导出
+      if (findScheduleRoot(document)) {
+        exportSchedule(document);
+      } else {
+        alert("未找到课程表数据，请确认处于'我的每周课程表-列表查看'页面");
+      }
+    });
+
+    document.body.appendChild(btn);
+    console.log(APP_NAME, "调试按钮已注入");
   }
 
   function attachIframeListener(iframe) {
