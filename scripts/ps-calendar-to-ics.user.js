@@ -391,20 +391,20 @@
     };
   }
 
-  function parseStartEndDate(dateStr) {
-    if (!dateStr) return null;
-    
-    // Parse "15/09/2025 - 21/09/2025" format
-    const match = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s*-\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-    if (!match) return null;
-
-    const [, startDay, startMonth, startYear, endDay, endMonth, endYear] = match;
-    
-    return {
-      start: new Date(parseInt(startYear), parseInt(startMonth) - 1, parseInt(startDay)),
-      end: new Date(parseInt(endYear), parseInt(endMonth) - 1, parseInt(endDay))
-    };
-  }
+   function parseStartEndDate(dateStr) {
+     if (!dateStr) return null;
+     
+     // Parse "15/09/2025 - 21/09/2025" format
+     const match = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s*-\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+     if (!match) return null;
+ 
+     // Note: The dates in PeopleSoft may only show a single week range
+     // but we need to extend to the full semester for RRULE to work properly
+     return {
+       start: ACADEMIC_CALENDAR_2025_2026.semesterStart,
+       end: ACADEMIC_CALENDAR_2025_2026.semesterEnd
+     };
+   }
 
   function parseDateTimeInfo(timeStr) {
     if (!timeStr) return null;
@@ -506,110 +506,109 @@
     return false;
   }
 
-  function generateClassDates(event) {
-    const dates = [];
-    const startDate = event.startDate;
-    const endDate = event.endDate;
-    const targetDaysOfWeek = event.days;
+   function generateClassDates(event) {
+     const dates = [];
+     const startDate = event.startDate;
+     const endDate = event.endDate;
+     const targetDaysOfWeek = event.days;
 
-    let currentDate = new Date(startDate);
-    
-    while (currentDate <= endDate) {
-      const dayOfWeek = currentDate.getDay();
-      
-      // Check if this date matches our target days
-      let shouldAddDate = targetDaysOfWeek.includes(dayOfWeek);
-      
-      // Check for makeup classes
-      const makeupClass = isMakeupClassDay(currentDate);
-      if (makeupClass && targetDaysOfWeek.includes(makeupClass.originalDay)) {
-        shouldAddDate = true;
-      }
-      
-      // Skip if it's a holiday or special no-class event
-      if (shouldSkipDate(currentDate, dayOfWeek)) {
-        shouldAddDate = false;
-      }
-      
-      if (shouldAddDate) {
-        dates.push(new Date(currentDate));
-      }
-      
-      // Move to next day
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
+     let currentDate = new Date(startDate);
+     
+     while (currentDate <= endDate) {
+       const dayOfWeek = currentDate.getDay();
+       
+       // Check if this date matches our target days
+       let shouldAddDate = targetDaysOfWeek.includes(dayOfWeek);
+       
+       // Check for makeup classes
+       const makeupClass = isMakeupClassDay(currentDate);
+       if (makeupClass && targetDaysOfWeek.includes(makeupClass.originalDay)) {
+         shouldAddDate = true;
+       }
+       
+       // Skip if it's a holiday or special no-class event
+       if (shouldSkipDate(currentDate, dayOfWeek)) {
+         shouldAddDate = false;
+       }
+       
+       if (shouldAddDate) {
+         dates.push(new Date(currentDate));
+       }
+       
+       // Move to next day
+       currentDate.setDate(currentDate.getDate() + 1);
+     }
 
-    console.log(APP_NAME, `为课程 "${event.summary}" 生成了 ${dates.length} 个上课日期`);
-    return dates;
-  }
+     console.log(APP_NAME, `为课程 "${event.summary}" 生成了 ${dates.length} 个上课日期`);
+     return dates;
+   }
 
-  /**
-   * Build RRULE with exceptions for a course event
-   */
-  function buildRRULEWithExceptions(ev) {
-    const rules = [];
-    const dayMap = {
-      'SU': 0, 'MO': 1, 'TU': 2, 'WE': 3, 'TH': 4, 'FR': 5, 'SA': 6
-    };
-    
-    // Convert days to numbers
-    const targetDays = ev.days.map(d => dayMap[d]).filter(d => d !== undefined);
-    if (targetDays.length === 0) return rules;
-    
-    // Generate RRULE for each day of week
-    targetDays.forEach(dayOfWeek => {
-      const dayToken = Object.keys(dayMap)[dayOfWeek];
-      
-      // Find first occurrence of this day in the date range
-      let startDate = new Date(ev.startDate);
-      while (startDate.getDay() !== dayOfWeek && startDate <= ev.endDate) {
-        startDate.setDate(startDate.getDate() + 1);
-      }
-      
-      if (startDate > ev.endDate) return; // No occurrence of this day
-      
-      const dtStart = combineDateAndTime(startDate, ev.startTime);
-      const dtEnd = combineDateAndTime(startDate, ev.endTime);
-      
-      // Calculate UNTIL date (end of semester)
-      const untilDate = new Date(ACADEMIC_CALENDAR_2025_2026.semesterEnd);
-      untilDate.setHours(dtEnd.getHours(), dtEnd.getMinutes(), 59, 999);
-      
-      // Build RRULE
-      const rrule = `FREQ=WEEKLY;BYDAY=${dayToken};UNTIL=${toUTCStringBasic(untilDate)}Z`;
-      
-      // Calculate exception dates (holidays, no-class events)
-      const exdates = [];
-      let checkDate = new Date(startDate);
-      
-      while (checkDate <= untilDate) {
-        if (checkDate.getDay() === dayOfWeek) {
-          // Check if this date should be excluded
-          const isHoliday = ACADEMIC_CALENDAR_2025_2026.holidays.some(holiday => 
-            isDateInRange(checkDate, holiday.start, holiday.end)
-          );
-          
-          const isNoClass = ACADEMIC_CALENDAR_2025_2026.specialEvents.some(event => 
-            event.type === 'no_class' && isDateInRange(checkDate, event.start || event.date, event.end || event.date)
-          );
-          
-          if (isHoliday || isNoClass) {
-            exdates.push(combineDateAndTime(checkDate, ev.startTime));
-          }
-        }
-        checkDate.setDate(checkDate.getDate() + 1);
-      }
-      
-      rules.push({
-        dtStart,
-        dtEnd,
-        rrule,
-        exdates
-      });
-    });
-    
-    return rules;
-  }
+   /**
+    * Build RRULE with exceptions for a course event
+    */
+   function buildRRULEWithExceptions(ev) {
+     const rules = [];
+     const dayMap = { 0: 'SU', 1: 'MO', 2: 'TU', 3: 'WE', 4: 'TH', 5: 'FR', 6: 'SA' };
+     
+     // Convert days to RRULE format
+     const targetDays = ev.days.filter(d => d !== undefined);
+     if (targetDays.length === 0) return rules;
+     
+     // Generate RRULE for each day of week
+     targetDays.forEach(dayOfWeek => {
+       const dayToken = dayMap[dayOfWeek];
+       if (!dayToken) return;
+       
+       // Find first occurrence of this day in the semester
+       let startDate = new Date(ACADEMIC_CALENDAR_2025_2026.semesterStart);
+       while (startDate.getDay() !== dayOfWeek && startDate <= ACADEMIC_CALENDAR_2025_2026.semesterEnd) {
+         startDate.setDate(startDate.getDate() + 1);
+       }
+       
+       if (startDate > ACADEMIC_CALENDAR_2025_2026.semesterEnd) return; // No occurrence of this day
+       
+       const dtStart = combineDateAndTime(startDate, ev.startTime);
+       const dtEnd = combineDateAndTime(startDate, ev.endTime);
+       
+       // Calculate UNTIL date (end of semester)
+       const untilDate = new Date(ACADEMIC_CALENDAR_2025_2026.semesterEnd);
+       untilDate.setHours(dtEnd.getHours(), dtEnd.getMinutes(), 59, 999);
+       
+       // Build RRULE
+       const rrule = `FREQ=WEEKLY;BYDAY=${dayToken};UNTIL=${toUTCStringBasic(untilDate)}Z`;
+       
+       // Calculate exception dates (holidays, no-class events)
+       const exdates = [];
+       let checkDate = new Date(startDate);
+       
+       while (checkDate <= untilDate) {
+         if (checkDate.getDay() === dayOfWeek) {
+           // Check if this date should be excluded
+           const isHoliday = ACADEMIC_CALENDAR_2025_2026.holidays.some(holiday => 
+             isDateInRange(checkDate, holiday.start, holiday.end)
+           );
+           
+           const isNoClass = ACADEMIC_CALENDAR_2025_2026.specialEvents.some(event => 
+             event.type === 'no_class' && isDateInRange(checkDate, event.start || event.date, event.end || event.date)
+           );
+           
+           if (isHoliday || isNoClass) {
+             exdates.push(combineDateAndTime(checkDate, ev.startTime));
+           }
+         }
+         checkDate.setDate(checkDate.getDate() + 1);
+       }
+       
+       rules.push({
+         dtStart,
+         dtEnd,
+         rrule,
+         exdates
+       });
+     });
+     
+     return rules;
+   }
 
   /**
    * Build ICS text from parsed data
@@ -638,51 +637,60 @@
     // Add special events first
     addSpecialEventsToICS(lines, now, dtstamp);
 
-    // Add regular class events using RRULE (like v0.1.1)
-    for (const ev of parsed.events) {
-      const rruleData = buildRRULEWithExceptions(ev);
-      
-      for (let ruleIndex = 0; ruleIndex < rruleData.length; ruleIndex++) {
-        const rule = rruleData[ruleIndex];
+     // Add regular class events using RRULE for proper semester-long repetition
+     for (const ev of parsed.events) {
+       const rruleData = buildRRULEWithExceptions(ev);
+       
+       for (let ruleIndex = 0; ruleIndex < rruleData.length; ruleIndex++) {
+         const rule = rruleData[ruleIndex];
+         
+         lines.push("BEGIN:VEVENT");
+         lines.push("UID:" + buildUID(ev, now, ruleIndex));
+         lines.push("DTSTAMP:" + dtstamp + "Z");
+         lines.push("CREATED:" + dtstamp + "Z");
+         lines.push("LAST-MODIFIED:" + dtstamp + "Z");
+         lines.push("DTSTART;TZID=" + TZID + ":" + toLocalStringBasic(rule.dtStart));
+         lines.push("DTEND;TZID=" + TZID + ":" + toLocalStringBasic(rule.dtEnd));
+         lines.push("RRULE:" + rule.rrule);
+         
+         // Add exception dates if any
+         if (rule.exdates && rule.exdates.length > 0) {
+           const exdateStr = rule.exdates.map(d => toLocalStringBasic(d)).join(",");
+           lines.push("EXDATE;TZID=" + TZID + ":" + exdateStr);
+         }
+         
+         lines.push("SUMMARY:" + foldLine(ev.summary));
+         lines.push("STATUS:CONFIRMED");
+         lines.push("TRANSP:OPAQUE");
+         
+         if (ev.location) {
+           lines.push("LOCATION:" + foldLine(ev.location));
+         }
+         
+         // Build comprehensive description with proper line breaks
+         let description = [];
+         if (ev.courseName && ev.courseName !== ev.courseCode) {
+           description.push("课程: " + ev.courseName);
+         }
+         if (ev.component) {
+           description.push("类型: " + ev.component);
+         }
+         if (ev.instructor) {
+           description.push("讲师: " + ev.instructor);
+         }
+         if (ev.classNumber) {
+           description.push("课程号: " + ev.classNumber);
+         }
+         
+         if (description.length > 0) {
+           // Use proper ICS line breaks
+           const descText = description.join("\\n");
+           lines.push("DESCRIPTION:" + foldLine(descText));
+         }
         
-        lines.push("BEGIN:VEVENT");
-        lines.push("UID:" + buildUID(ev, now, ruleIndex));
-        lines.push("DTSTAMP:" + dtstamp + "Z");
-        lines.push("DTSTART;TZID=" + TZID + ":" + toLocalStringBasic(rule.dtStart));
-        lines.push("DTEND;TZID=" + TZID + ":" + toLocalStringBasic(rule.dtEnd));
-        lines.push("RRULE:" + rule.rrule);
-        
-        // Add exception dates if any
-        if (rule.exdates && rule.exdates.length > 0) {
-          const exdateStr = rule.exdates.map(d => toLocalStringBasic(d)).join(",");
-          lines.push("EXDATE;TZID=" + TZID + ":" + exdateStr);
-        }
-        
-        lines.push("SUMMARY:" + foldLine(ev.summary));
-        
-        if (ev.location) {
-          lines.push("LOCATION:" + foldLine(ev.location));
-        }
-        
-        // Build description with proper line breaks
-        let description = [];
-        if (ev.courseName && ev.courseName !== ev.courseCode) {
-          description.push("课程: " + ev.courseName);
-        }
+        // Add categories for better organization
         if (ev.component) {
-          description.push("类型: " + ev.component);
-        }
-        if (ev.instructor) {
-          description.push("讲师: " + ev.instructor);
-        }
-        if (ev.classNumber) {
-          description.push("课程号: " + ev.classNumber);
-        }
-        
-        if (description.length > 0) {
-          // Use proper line breaks for ICS description
-          const descText = description.join("\\n");
-          lines.push("DESCRIPTION:" + foldLine(descText));
+          lines.push("CATEGORIES:" + foldLine(ev.component));
         }
         
         lines.push("END:VEVENT");
@@ -707,8 +715,8 @@
             lines.push("DTSTAMP:" + dtstamp + "Z");
             lines.push("CREATED:" + dtstamp + "Z");
             lines.push("LAST-MODIFIED:" + dtstamp + "Z");
-            lines.push("DTSTART;VALUE=DATE:" + toDateStringBasic(currentDate));
-            lines.push("DTEND;VALUE=DATE:" + toDateStringBasic(new Date(currentDate.getTime() + 24 * 60 * 60 * 1000)));
+             lines.push("DTSTART;VALUE=DATE:" + toDateStringBasic(currentDate));
+             lines.push("DTEND;VALUE=DATE:" + toDateStringBasic(new Date(currentDate.getTime() + 24 * 60 * 60 * 1000)));
             lines.push("SUMMARY:" + foldLine(event.name));
             lines.push("DESCRIPTION:" + foldLine("学校特殊事件"));
             lines.push("STATUS:CONFIRMED");
@@ -724,8 +732,8 @@
           lines.push("DTSTAMP:" + dtstamp + "Z");
           lines.push("CREATED:" + dtstamp + "Z");
           lines.push("LAST-MODIFIED:" + dtstamp + "Z");
-            lines.push("DTSTART;VALUE=DATE:" + toDateStringBasic(event.date));
-            lines.push("DTEND;VALUE=DATE:" + toDateStringBasic(new Date(event.date.getTime() + 24 * 60 * 60 * 1000)));
+           lines.push("DTSTART;VALUE=DATE:" + toDateStringBasic(event.date));
+           lines.push("DTEND;VALUE=DATE:" + toDateStringBasic(new Date(event.date.getTime() + 24 * 60 * 60 * 1000)));
           lines.push("SUMMARY:" + foldLine(event.name));
           lines.push("DESCRIPTION:" + foldLine("学校特殊事件"));
           lines.push("STATUS:CONFIRMED");
@@ -757,7 +765,7 @@
     const base = [
       event.name,
       event.type || "",
-      date ? toDateStringBasic(date) : toDateStringBasic(event.date || event.start)
+       date ? toDateStringBasic(date) : toDateStringBasic(event.date || event.start)
     ].filter(Boolean).join("-");
     
     const hash = simpleHash(base);
@@ -811,11 +819,6 @@
            date.getUTCSeconds().toString().padStart(2, '0');
   }
 
-  function toDateString(date) {
-    return date.getFullYear() +
-           (date.getMonth() + 1).toString().padStart(2, '0') +
-           date.getDate().toString().padStart(2, '0');
-  }
 
   function foldLine(text) {
     // ICS line folding: max 75 octets per line
@@ -851,21 +854,6 @@
       .replace(/;/g, "\\;")      // Escape semicolons
       .replace(/\n/g, "\\n")     // Escape newlines
       .replace(/\r/g, "");       // Remove carriage returns
-  }
-
-  function escapeText(text) {
-    return escapeICSText(text);
-  }
-
-  function toDateStringBasic(date) {
-    return date.getFullYear() +
-           (date.getMonth() + 1).toString().padStart(2, '0') +
-           date.getDate().toString().padStart(2, '0');
-  }
-
-  function isDateInRange(date, start, end) {
-    if (!start || !end) return false;
-    return date >= start && date <= end;
   }
 
   function simpleHash(str) {
