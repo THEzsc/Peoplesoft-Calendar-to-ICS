@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PS Calendar to ICS (ZJU)
 // @namespace    https://github.com/yourname/ps-calendar-to-ics
-// @version      0.3.4
+// @version      0.3.5
 // @description  将 PeopleSoft「我的每周课程表-列表查看」导出为 ICS 文件（支持中文/英文标签，Asia/Shanghai）
 // @author       You
 // @match        https://scrsprd.zju.edu.cn/psc/CSPRD/EMPLOYEE/HRMS/*
@@ -410,11 +410,20 @@
   function parseDateTimeInfo(timeStr) {
     if (!timeStr) return null;
 
+    console.log(APP_NAME, "Parsing time string:", timeStr);
+
     // Parse "星期一 2:00PM - 3:50PM" format
     const match = timeStr.match(/星期([一二三四五六日])\s+(\d+):(\d+)(AM|PM)\s*-\s*(\d+):(\d+)(AM|PM)/);
-    if (!match) return null;
+    if (!match) {
+      console.warn(APP_NAME, "Time string does not match expected format:", timeStr);
+      return null;
+    }
 
     const [, dayChar, startHour, startMin, startAmPm, endHour, endMin, endAmPm] = match;
+    
+    console.log(APP_NAME, "Parsed time components:", {
+      dayChar, startHour, startMin, startAmPm, endHour, endMin, endAmPm
+    });
     
     // Convert Chinese day to number (0 = Sunday, 1 = Monday, etc.)
     const dayMap = { '日': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6 };
@@ -431,11 +440,14 @@
     if (endAmPm === 'PM' && endHour24 !== 12) endHour24 += 12;
     if (endAmPm === 'AM' && endHour24 === 12) endHour24 = 0;
 
-    return {
+    const result = {
       days: [dayOfWeek],
       startTime: { hour: startHour24, minute: parseInt(startMin) },
       endTime: { hour: endHour24, minute: parseInt(endMin) }
     };
+    
+    console.log(APP_NAME, "Parsed time result:", result);
+    return result;
   }
 
   function detectTermTitle(doc) {
@@ -723,7 +735,24 @@
 
   function combineDateAndTime(date, time) {
     const result = new Date(date);
-    result.setHours(time.hour || time.h, time.minute || time.m, 0, 0);
+    
+    // Debug logging to identify the issue
+    console.log(APP_NAME, "combineDateAndTime debug:", {
+      date: date,
+      time: time,
+      hour: time.hour || time.h,
+      minute: time.minute || time.m
+    });
+    
+    const hour = time.hour || time.h;
+    const minute = time.minute || time.m;
+    
+    if (hour === undefined || minute === undefined) {
+      console.error(APP_NAME, "Invalid time object:", time);
+      return result; // Return date without time modification
+    }
+    
+    result.setHours(hour, minute, 0, 0);
     return result;
   }
 
