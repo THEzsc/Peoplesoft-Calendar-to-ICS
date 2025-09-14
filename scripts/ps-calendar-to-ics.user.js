@@ -586,70 +586,67 @@
     // Keep file small for import: skip special events for now (user request)
     // addSpecialEventsToICS(lines, now, dtstamp);
 
-    // Add regular class events
-    // Deduplicate by (summary + start/end time + location + weekday)
-    const seenKeys = new Set();
+    // Add regular class events grouped using RDATE to reduce file size
+    const groupMap = new Map();
     for (const ev of parsed.events) {
       const classDates = generateClassDates(ev);
-      
-      for (let i = 0; i < classDates.length; i++) {
-        const classDate = classDates[i];
-        const dtStartLocal = combineDateAndTime(classDate, ev.startTime);
-        const dtEndLocal = combineDateAndTime(classDate, ev.endTime);
+      const startKey = (ev.startTime && (ev.startTime.hour ?? ev.startTime.h) + ":" + (ev.startTime.minute ?? ev.startTime.m)) || "";
+      const endKey = (ev.endTime && (ev.endTime.hour ?? ev.endTime.h) + ":" + (ev.endTime.minute ?? ev.endTime.m)) || "";
+      const groupKey = [ev.summary, startKey, endKey, ev.location || "", ev.instructor || "", ev.classNumber || "", ev.component || "", ev.section || ""].join("|");
+      if (!groupMap.has(groupKey)) groupMap.set(groupKey, { ev, dates: [] });
+      groupMap.get(groupKey).dates.push(...classDates);
+    }
 
-        const key = [
-          ev.summary,
-          ev.startTime && (ev.startTime.hour ?? ev.startTime.h) + ":" + (ev.startTime.minute ?? ev.startTime.m),
-          ev.endTime && (ev.endTime.hour ?? ev.endTime.h) + ":" + (ev.endTime.minute ?? ev.endTime.m),
-          ev.location || "",
-          classDate.getDay()
-        ].join("|");
-        if (seenKeys.has(key) && i > 0) continue;
-        seenKeys.add(key);
+    for (const { ev, dates } of groupMap.values()) {
+      if (!dates.length) continue;
+      dates.sort((a, b) => a - b);
+      const first = dates[0];
+      const dtStartFirst = combineDateAndTime(first, ev.startTime);
+      const dtEndFirst = combineDateAndTime(first, ev.endTime);
+      const durationMs = dtEndFirst.getTime() - dtStartFirst.getTime();
 
-        lines.push("BEGIN:VEVENT");
-        lines.push("UID:" + buildUID(ev, now, i));
-        lines.push("DTSTAMP:" + dtstamp + "Z");
-        lines.push("CREATED:" + dtstamp + "Z");
-        lines.push("LAST-MODIFIED:" + dtstamp + "Z");
-        lines.push("DTSTART;TZID=" + TZID + ":" + toLocalStringBasic(dtStartLocal));
-        lines.push("DTEND;TZID=" + TZID + ":" + toLocalStringBasic(dtEndLocal));
-        lines.push("SUMMARY:" + foldLine(ev.summary));
-        lines.push("STATUS:CONFIRMED");
-        lines.push("TRANSP:OPAQUE");
-        
-        if (ev.location) {
-          lines.push("LOCATION:" + foldLine(ev.location));
-        }
-        
-        // Build comprehensive description
-        let description = [];
-        if (ev.courseName && ev.courseName !== ev.courseCode) {
-          description.push(`课程: ${ev.courseName}`);
-        }
-        if (ev.component) {
-          description.push(`类型: ${ev.component}`);
-        }
-        if (ev.instructor) {
-          description.push(`讲师: ${ev.instructor}`);
-        }
-        if (ev.classNumber) {
-          description.push(`课程号: ${ev.classNumber}`);
-        }
-        
-        if (description.length > 0) {
-          // Use single-escaped newlines as requested
-          const desc = description.join("\n");
-          lines.push("DESCRIPTION:" + foldLine(desc));
-        }
-        
-        // Add categories for better organization
-        if (ev.component) {
-          lines.push("CATEGORIES:" + foldLine(ev.component));
-        }
-        
-        lines.push("END:VEVENT");
+      lines.push("BEGIN:VEVENT");
+      lines.push("UID:" + buildUID(ev, now, ev.summary));
+      lines.push("DTSTAMP:" + dtstamp + "Z");
+      lines.push("CREATED:" + dtstamp + "Z");
+      lines.push("LAST-MODIFIED:" + dtstamp + "Z");
+      lines.push("DTSTART;TZID=" + TZID + ":" + toLocalStringBasic(dtStartFirst));
+      if (durationMs > 0) {
+        lines.push("DURATION:" + formatDuration(durationMs));
+      } else {
+        lines.push("DTEND;TZID=" + TZID + ":" + toLocalStringBasic(dtEndFirst));
       }
+      if (dates.length > 1) {
+        const rdates = dates.slice(1).map(d => toLocalStringBasic(combineDateAndTime(d, ev.startTime))).join(",");
+        lines.push("RDATE;TZID=" + TZID + ":" + rdates);
+      }
+      lines.push("SUMMARY:" + foldLine(ev.summary));
+      lines.push("STATUS:CONFIRMED");
+      lines.push("TRANSP:OPAQUE");
+      if (ev.location) {
+        lines.push("LOCATION:" + foldLine(ev.location));
+      }
+      let description = [];
+      if (ev.courseName && ev.courseName !== ev.courseCode) {
+        description.push(`课程: ${ev.courseName}`);
+      }
+      if (ev.component) {
+        description.push(`类型: ${ev.component}`);
+      }
+      if (ev.instructor) {
+        description.push(`讲师: ${ev.instructor}`);
+      }
+      if (ev.classNumber) {
+        description.push(`课程号: ${ev.classNumber}`);
+      }
+      if (description.length > 0) {
+        const desc = description.join("\n");
+        lines.push("DESCRIPTION:" + foldLine(desc));
+      }
+      if (ev.component) {
+        lines.push("CATEGORIES:" + foldLine(ev.component));
+      }
+      lines.push("END:VEVENT");
     }
 
     lines.push("END:VCALENDAR");
@@ -707,8 +704,8 @@
       ev.section || "",
       ev.location,
       ev.instructor,
-      ev.days.join(""),
-      index.toString()
+      ev.days && ev.days.join ? ev.days.join("") : "",
+      String(index)
     ].filter(Boolean).join("-");
     
     const hash = simpleHash(base);
@@ -780,6 +777,18 @@
            date.getHours().toString().padStart(2, '0') +
            date.getMinutes().toString().padStart(2, '0') +
            date.getSeconds().toString().padStart(2, '0');
+  }
+
+  function formatDuration(ms) {
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    let s = 'PT';
+    if (hours) s += hours + 'H';
+    if (minutes) s += minutes + 'M';
+    if (seconds || (!hours && !minutes)) s += seconds + 'S';
+    return s;
   }
 
   function toUTCStringBasic(date) {
