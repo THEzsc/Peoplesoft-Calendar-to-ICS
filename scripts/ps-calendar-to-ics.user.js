@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PS Calendar to ICS (ZJU)
 // @namespace    https://github.com/yourname/ps-calendar-to-ics
-// @version      0.3.6
+// @version      0.3.7
 // @description  将 PeopleSoft「我的每周课程表-列表查看」导出为 ICS 文件（支持中文/英文标签，Asia/Shanghai）
 // @author       You
 // @match        https://scrsprd.zju.edu.cn/psc/CSPRD/EMPLOYEE/HRMS/*
@@ -507,63 +507,75 @@
     return false;
   }
 
-  function generateBasicClassDates(event) {
-    // Step 1: Generate all basic class dates without holiday/makeup logic
-    const dates = [];
+  function generateRRuleAndExceptions(event) {
+    // Generate RRULE with EXDATE for holidays and makeup classes
     const startDate = event.startDate;
     const endDate = event.endDate;
     const targetDaysOfWeek = event.days;
-
-    let currentDate = new Date(startDate);
     
-    while (currentDate <= endDate) {
+    // Calculate total weeks
+    const totalDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+    const totalWeeks = Math.ceil(totalDays / 7);
+    
+    // Find the first occurrence date
+    let firstOccurrence = new Date(startDate);
+    while (!targetDaysOfWeek.includes(firstOccurrence.getDay())) {
+      firstOccurrence.setDate(firstOccurrence.getDate() + 1);
+    }
+    
+    // Generate all basic dates to find exceptions
+    const basicDates = [];
+    const exceptionDates = [];
+    const makeupEvents = [];
+    
+    let currentDate = new Date(firstOccurrence);
+    let weekCount = 0;
+    
+    while (currentDate <= endDate && weekCount < totalWeeks) {
       const dayOfWeek = currentDate.getDay();
       
       if (targetDaysOfWeek.includes(dayOfWeek)) {
-        dates.push(new Date(currentDate));
+        basicDates.push(new Date(currentDate));
+        
+        // Check if this date should be excluded (holiday)
+        if (shouldSkipDate(currentDate, dayOfWeek)) {
+          exceptionDates.push(new Date(currentDate));
+        }
+        
+        // Move to next week
+        currentDate.setDate(currentDate.getDate() + 7);
+        weekCount++;
+      } else {
+        currentDate.setDate(currentDate.getDate() + 1);
       }
-      
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    console.log(APP_NAME, `为课程 "${event.summary}" 生成了 ${dates.length} 个基础上课日期`);
-    return dates;
-  }
-
-  function applyHolidayAndMakeupLogic(basicDates, targetDaysOfWeek) {
-    // Step 2: Apply holiday and makeup logic to basic dates
-    const finalDates = [];
-    
-    for (const date of basicDates) {
-      const dayOfWeek = date.getDay();
-      
-      // Skip if it's a holiday or special no-class event
-      if (shouldSkipDate(date, dayOfWeek)) {
-        console.log(APP_NAME, `跳过假期: ${date.toDateString()}`);
-        continue;
-      }
-      
-      finalDates.push(date);
     }
     
-    // Add makeup class dates
-    const startDate = basicDates[0];
-    const endDate = basicDates[basicDates.length - 1];
-    let currentDate = new Date(startDate);
-    
-    while (currentDate <= endDate) {
-      const makeupClass = isMakeupClassDay(currentDate);
+    // Find makeup classes
+    let checkDate = new Date(startDate);
+    while (checkDate <= endDate) {
+      const makeupClass = isMakeupClassDay(checkDate);
       if (makeupClass && targetDaysOfWeek.includes(makeupClass.originalDay)) {
-        console.log(APP_NAME, `添加补课日期: ${currentDate.toDateString()} (补${getChineseDayName(makeupClass.originalDay)})`);
-        finalDates.push(new Date(currentDate));
+        makeupEvents.push({
+          date: new Date(checkDate),
+          originalDay: makeupClass.originalDay,
+          note: `补${getChineseDayName(makeupClass.originalDay)}的课`
+        });
       }
-      currentDate.setDate(currentDate.getDate() + 1);
+      checkDate.setDate(checkDate.getDate() + 1);
     }
     
-    // Sort final dates
-    finalDates.sort((a, b) => a - b);
-    
-    return finalDates;
+    return {
+      firstOccurrence,
+      weekCount: Math.max(1, weekCount),
+      dayOfWeek: firstOccurrence.getDay(),
+      exceptionDates,
+      makeupEvents
+    };
+  }
+  
+  function getDayName(dayOfWeek) {
+    const days = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+    return days[dayOfWeek];
   }
 
   function getChineseDayName(dayOfWeek) {
@@ -599,7 +611,7 @@
     const eventGroups = new Map();
     
     for (const ev of parsed.events) {
-      const groupKey = `${ev.summary}|${ev.location}|${ev.instructor}`;
+      const groupKey = `${ev.summary}|${ev.location}|${ev.instructor}|${ev.days.join(',')}`;
       if (!eventGroups.has(groupKey)) {
         eventGroups.set(groupKey, []);
       }
@@ -608,51 +620,76 @@
     
     console.log(APP_NAME, `将 ${parsed.events.length} 个事件分组为 ${eventGroups.size} 组`);
     
-    // Process each group
+    // Process each group using RRULE + EXDATE
     for (const [groupKey, events] of eventGroups) {
       const firstEvent = events[0];
       
-      // Step 1: Generate basic class dates (original schedule)
-      const basicDates = generateBasicClassDates(firstEvent);
+      // Generate RRULE and exceptions
+      const rruleData = generateRRuleAndExceptions(firstEvent);
       
-      // Step 2: Apply holiday and makeup logic
-      const finalDates = applyHolidayAndMakeupLogic(basicDates, firstEvent.days);
+      console.log(APP_NAME, `课程 "${firstEvent.summary}": ${rruleData.weekCount} 周, ${rruleData.exceptionDates.length} 个例外, ${rruleData.makeupEvents.length} 个补课`);
       
-      console.log(APP_NAME, `课程组 "${firstEvent.summary}": ${basicDates.length} -> ${finalDates.length} 个上课日期`);
+      // Create main recurring event
+      const dtStart = combineDateAndTime(rruleData.firstOccurrence, firstEvent.startTime);
+      const dtEnd = combineDateAndTime(rruleData.firstOccurrence, firstEvent.endTime);
       
-      // Step 3: Create ICS events with RDATE for efficiency
-      if (finalDates.length > 0) {
-        const dtStartFirst = combineDateAndTime(finalDates[0], firstEvent.startTime);
-        const dtEndFirst = combineDateAndTime(finalDates[0], firstEvent.endTime);
+      lines.push("BEGIN:VEVENT");
+      lines.push("UID:" + buildUID(firstEvent, now, 0));
+      lines.push("DTSTAMP:" + dtstamp + "Z");
+      lines.push("DTSTART;TZID=" + TZID + ":" + toLocalStringBasic(dtStart));
+      lines.push("DTEND;TZID=" + TZID + ":" + toLocalStringBasic(dtEnd));
+      
+      // Add RRULE
+      const dayName = getDayName(rruleData.dayOfWeek);
+      lines.push(`RRULE:FREQ=WEEKLY;COUNT=${rruleData.weekCount};BYDAY=${dayName}`);
+      
+      // Add EXDATE for holidays
+      if (rruleData.exceptionDates.length > 0) {
+        const exdates = rruleData.exceptionDates
+          .map(date => toLocalStringBasic(combineDateAndTime(date, firstEvent.startTime)))
+          .join(",");
+        lines.push(`EXDATE;TZID=${TZID}:${exdates}`);
+      }
+      
+      lines.push("SUMMARY:" + escapeICSText(firstEvent.summary));
+      
+      if (firstEvent.location) {
+        lines.push("LOCATION:" + escapeICSText(firstEvent.location));
+      }
+      
+      // Compact description
+      let desc = [];
+      if (firstEvent.component) desc.push(`类型: ${firstEvent.component}`);
+      if (firstEvent.instructor) desc.push(`讲师: ${firstEvent.instructor}`);
+      if (desc.length > 0) {
+        lines.push("DESCRIPTION:" + escapeICSText(desc.join("\n")));
+      }
+      
+      lines.push("END:VEVENT");
+      
+      // Add makeup events as separate events
+      for (let i = 0; i < rruleData.makeupEvents.length; i++) {
+        const makeupEvent = rruleData.makeupEvents[i];
+        const makeupStart = combineDateAndTime(makeupEvent.date, firstEvent.startTime);
+        const makeupEnd = combineDateAndTime(makeupEvent.date, firstEvent.endTime);
         
         lines.push("BEGIN:VEVENT");
-        lines.push("UID:" + buildUID(firstEvent, now, 0));
+        lines.push("UID:" + buildUID(firstEvent, now, `makeup-${i}`));
         lines.push("DTSTAMP:" + dtstamp + "Z");
-        lines.push("DTSTART;TZID=" + TZID + ":" + toLocalStringBasic(dtStartFirst));
-        lines.push("DTEND;TZID=" + TZID + ":" + toLocalStringBasic(dtEndFirst));
-        
-        // Add additional dates using RDATE
-        if (finalDates.length > 1) {
-          const rdates = finalDates.slice(1)
-            .map(date => toLocalStringBasic(combineDateAndTime(date, firstEvent.startTime)))
-            .join(",");
-          lines.push("RDATE;TZID=" + TZID + ":" + rdates);
-        }
-        
-        lines.push("SUMMARY:" + escapeICSText(firstEvent.summary));
+        lines.push("DTSTART;TZID=" + TZID + ":" + toLocalStringBasic(makeupStart));
+        lines.push("DTEND;TZID=" + TZID + ":" + toLocalStringBasic(makeupEnd));
+        lines.push("SUMMARY:" + escapeICSText(firstEvent.summary + " (调课)"));
         
         if (firstEvent.location) {
           lines.push("LOCATION:" + escapeICSText(firstEvent.location));
         }
         
-        // Compact description
-        let desc = [];
-        if (firstEvent.component) desc.push(`类型: ${firstEvent.component}`);
-        if (firstEvent.instructor) desc.push(`讲师: ${firstEvent.instructor}`);
-        if (desc.length > 0) {
-          lines.push("DESCRIPTION:" + escapeICSText(desc.join("\n")));
-        }
+        let makeupDesc = [];
+        if (firstEvent.component) makeupDesc.push(`类型: ${firstEvent.component}`);
+        if (firstEvent.instructor) makeupDesc.push(`讲师: ${firstEvent.instructor}`);
+        makeupDesc.push(`注: ${makeupEvent.note}`);
         
+        lines.push("DESCRIPTION:" + escapeICSText(makeupDesc.join("\n")));
         lines.push("END:VEVENT");
       }
     }
