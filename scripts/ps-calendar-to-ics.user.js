@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PS Calendar to ICS (ZJU)
 // @namespace    https://github.com/yourname/ps-calendar-to-ics
-// @version      0.3.5
+// @version      0.3.6
 // @description  将 PeopleSoft「我的每周课程表-列表查看」导出为 ICS 文件（支持中文/英文标签，Asia/Shanghai）
 // @author       You
 // @match        https://scrsprd.zju.edu.cn/psc/CSPRD/EMPLOYEE/HRMS/*
@@ -410,8 +410,6 @@
   function parseDateTimeInfo(timeStr) {
     if (!timeStr) return null;
 
-    console.log(APP_NAME, "Parsing time string:", timeStr);
-
     // Parse "星期一 2:00PM - 3:50PM" format
     const match = timeStr.match(/星期([一二三四五六日])\s+(\d+):(\d+)(AM|PM)\s*-\s*(\d+):(\d+)(AM|PM)/);
     if (!match) {
@@ -420,10 +418,6 @@
     }
 
     const [, dayChar, startHour, startMin, startAmPm, endHour, endMin, endAmPm] = match;
-    
-    console.log(APP_NAME, "Parsed time components:", {
-      dayChar, startHour, startMin, startAmPm, endHour, endMin, endAmPm
-    });
     
     // Convert Chinese day to number (0 = Sunday, 1 = Monday, etc.)
     const dayMap = { '日': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6 };
@@ -446,7 +440,6 @@
       endTime: { hour: endHour24, minute: parseInt(endMin) }
     };
     
-    console.log(APP_NAME, "Parsed time result:", result);
     return result;
   }
 
@@ -519,6 +512,30 @@
     return false;
   }
 
+  function generateSimpleClassDates(event) {
+    const dates = [];
+    const startDate = event.startDate;
+    const endDate = event.endDate;
+    const targetDaysOfWeek = event.days;
+
+    let currentDate = new Date(startDate);
+    
+    while (currentDate <= endDate) {
+      const dayOfWeek = currentDate.getDay();
+      
+      // Simply check if this date matches our target days (no holiday/makeup logic for now)
+      if (targetDaysOfWeek.includes(dayOfWeek)) {
+        dates.push(new Date(currentDate));
+      }
+      
+      // Move to next day
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    console.log(APP_NAME, `为课程 "${event.summary}" 生成了 ${dates.length} 个上课日期`);
+    return dates;
+  }
+
   function generateClassDates(event) {
     const dates = [];
     const startDate = event.startDate;
@@ -580,12 +597,12 @@
     lines.push("END:STANDARD");
     lines.push("END:VTIMEZONE");
 
-    // Add special events first
-    addSpecialEventsToICS(lines, now, dtstamp);
+    // Skip special events for now to reduce file size
+    // addSpecialEventsToICS(lines, now, dtstamp);
 
-    // Add regular class events
+    // Add regular class events with simple date generation (no holidays/makeup for now)
     for (const ev of parsed.events) {
-      const classDates = generateClassDates(ev);
+      const classDates = generateSimpleClassDates(ev);
       
       for (let i = 0; i < classDates.length; i++) {
         const classDate = classDates[i];
@@ -623,7 +640,7 @@
         }
         
          if (description.length > 0) {
-           lines.push("DESCRIPTION:" + foldLine(formatDescription(description)));
+           lines.push("DESCRIPTION:" + foldLine(description.join("\\n")));
          }
         
         // Add categories for better organization
@@ -735,14 +752,6 @@
 
   function combineDateAndTime(date, time) {
     const result = new Date(date);
-    
-    // Debug logging to identify the issue
-    console.log(APP_NAME, "combineDateAndTime debug:", {
-      date: date,
-      time: time,
-      hour: time.hour || time.h,
-      minute: time.minute || time.m
-    });
     
     const hour = time.hour || time.h;
     const minute = time.minute || time.m;
