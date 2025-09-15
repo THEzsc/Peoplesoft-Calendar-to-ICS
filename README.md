@@ -45,7 +45,6 @@
 > 🚀 **一键安装**: 通过 OpenUserJS 平台快速部署
 
 | 步骤 | 操作说明 | 链接/说明 |
-
 |------|----------|-----------|
 | 1️⃣ | 安装浏览器扩展 | [Tampermonkey 官方下载](https://www.tampermonkey.net/) |
 | 2️⃣ | 一键安装脚本 | [📥 OpenUserJS 安装链接](https://openuserjs.org/scripts/THEzsc/PS_Calendar_to_ICS_(ZJU)) |
