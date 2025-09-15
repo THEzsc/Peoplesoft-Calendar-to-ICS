@@ -4,10 +4,12 @@
 > 将 PeopleSoft 课程表一键导出为标准 ICS 日历文件的 Tampermonkey 用户脚本
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/Version-0.3.8.1-blue.svg)](./VERSION.md)
+[![Version](https://img.shields.io/badge/Version-0.3.8.2-blue.svg)](./VERSION.md)
 [![Platform](https://img.shields.io/badge/Platform-Tampermonkey-green.svg)](https://www.tampermonkey.net/)
 
 ---
+
+## [博客地址](https://tzblog.tech/posts/工具-将izju的ps课表导出为ics文件并导入至日历/)
 
 ## ✨ 功能特点
 
@@ -29,7 +31,6 @@
 - ✅ **精确日期计算** - 基于RRULE+EXDATE机制，每个日期都经过验证
 - 🧠 **智能状态管理** - 自动继承课程代码和组件信息
 - 🌏 **时区标准化** - 使用Asia/Shanghai时区，确保时间准确无误
-- 🧪 **离线调试** - 支持本地HTML文件测试，便于开发调试
 - 📱 **跨平台兼容** - 支持Outlook、Google Calendar、Apple Calendar等
 
 ## 🚀 快速开始
@@ -40,26 +41,75 @@
 在您的浏览器中安装 [Tampermonkey 扩展](https://www.tampermonkey.net/)
 
 #### 2️⃣ 安装脚本
-```bash
-1. 打开 Tampermonkey 管理面板
-2. 点击 "创建新脚本" 
-3. 复制 scripts/ps-calendar-to-ics.user.js 的全部内容
-4. 粘贴并保存 (Ctrl+S)
-```
+
+> 🚀 **一键安装**: 通过 OpenUserJS 平台快速部署
+
+| 步骤 | 操作说明 | 链接/说明 |
+|------|----------|-----------|
+| 1️⃣ | 安装浏览器扩展 | [Tampermonkey 官方下载](https://www.tampermonkey.net/) |
+| 2️⃣ | 一键安装脚本 | [📥 OpenUserJS 安装链接](https://openuserjs.org/scripts/THEzsc/PS_Calendar_to_ICS_(ZJU)) |
+| 3️⃣ | 开启开发者模式 | 🔧 **必需步骤** - 允许用户脚本运行 |
+| 4️⃣ | 配置扩展权限 | 🛡️ 确保脚本可以正常工作 |
+
+<details>
+<summary>🔧 浏览器扩展管理页面</summary>
+
+| 浏览器 | 管理页面链接 | 快捷键 |
+|--------|-------------|--------|
+| 🌐 **Google Chrome** | [`chrome://extensions/`](chrome://extensions/) | `Ctrl + Shift + Delete` |
+| 🔷 **Microsoft Edge** | [`edge://extensions/`](edge://extensions/) | `Ctrl + Shift + Delete` |
+| 🔴 **Opera** | [`opera://extensions`](opera://extensions) | `Ctrl + Shift + E` |
+
+**⚠️ 重要配置**:
+1. 打开 **开发者模式** 开关
+2. 进入 Tampermonkey 设置
+3. 启用 **"允许用户运行脚本"** (如有该选项)
+</details>
+
+---
 
 ### 📋 使用指南
 
-#### 🔐 登录系统
-1. 访问浙江大学国际校区 PeopleSoft 系统
-2. 进入 **【选课】** → **【我的每周课程表】**
-3. ⚠️ **重要**: 确保选择 **【列表查看】** 视图（非日历视图）
+#### 🔐 系统登录与导航
 
-#### 📤 导出课表
-1. 页面右下角会自动出现 **"导出 ICS"** 按钮
-2. 点击按钮下载 `iZJU-<学期标题>-<日期>.ics` 文件
-3. 将ICS文件导入您喜爱的日历应用:
-   - 📱 **手机**: Google Calendar、Apple Calendar
-   - 💻 **桌面**: Outlook、Thunderbird、Notion Calendar
+```mermaid
+graph LR
+    A[访问PeopleSoft] --> B[中文模式登录]
+    B --> C[学期选课]
+    C --> D[我的每周课程表]
+    D --> E[列表查看]
+    E --> F[导出ICS]
+```
+
+| 步骤 | 详细操作 | 注意事项 |
+|------|----------|----------|
+| 1️⃣ **系统登录** | 访问 [浙大选课系统](https://scrsprd.zju.edu.cn) | ⚠️ 右上角显示"English"时登录（中文模式）|
+| 2️⃣ **进入课表** | 【学期选课】→【我的每周课程表】 | 📍 确保选择当前学期 |
+| 3️⃣ **切换视图** | 点击【列表查看】按钮 | ❌ 不要使用"每周日历"视图 |
+| 4️⃣ **导出课表** | 点击页面右上角"导出 ICS"按钮 | 📁 文件名格式: `iZJU-课程表-日期.ics` |
+| 5️⃣ **导入日历** | 将 `.ics` 文件导入日历应用 | 📱 支持所有主流日历应用 |
+
+#### 📱 支持的日历应用
+
+<details>
+<summary>🖥️ 桌面端应用</summary>
+
+- ✅ **Microsoft Outlook** - Windows/Mac
+- ✅ **Apple Calendar** - macOS
+- ✅ **Thunderbird** - 跨平台
+- ✅ **Notion Calendar** - 现代化界面
+- ✅ **Google Calendar Web** - 浏览器端
+</details>
+
+<details>
+<summary>📱 移动端应用</summary>
+
+- ✅ **Google Calendar** - Android/iOS
+- ✅ **Apple Calendar** - iOS
+- ✅ **Outlook Mobile** - Android/iOS
+- ✅ **Samsung Calendar** - Android
+- ✅ **Any.do Calendar** - 跨平台
+</details>
 
 ## 🧪 离线测试
 
