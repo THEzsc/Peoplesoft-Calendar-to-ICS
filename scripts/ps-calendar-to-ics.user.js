@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PS Calendar to ICS (iZJU)
 // @namespace    https://github.com/yourname/ps-calendar-to-ics
-// @version      0.3.8.4
+// @version      3.10
 // @description  将 PeopleSoft「我的每周课程表-列表查看」导出为 ICS 文件（支持中文/英文标签，Asia/Shanghai）
 // @author       You
 // @match        https://scrsprd.zju.edu.cn/psc/CSPRD/EMPLOYEE/HRMS/*
@@ -179,9 +179,9 @@
     const text = cleanText(el.textContent);
     if (!text) return false;
     
-      const hasScheduleContent = 
-        /课程表|我的课程|课程号码|日期和时间|开始.结束日期|讲师/i.test(text) ||
-        /Class Schedule|My Class Schedule|Course|Meeting Times|Days.*Times|Component|Instructor|Laboratory|Lecture/i.test(text);
+    const hasScheduleContent = 
+      /课程表|我的课程|课程号码|日期和时间|开始.结束日期|讲师/i.test(text) ||
+      /Class Schedule|My Class Schedule|Course|Meeting Times|Days.*Times|Component|Instructor|Laboratory|Lecture/i.test(text);
     
     const hasSubstantialContent = text.length > 50;
     const hasCourseTables = el.querySelectorAll('table[id*="CLASS_MTG_VW"], td.PAGROUPDIVIDER').length > 0;
