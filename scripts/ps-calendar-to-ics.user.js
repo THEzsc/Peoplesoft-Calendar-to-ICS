@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         PS Calendar to ICS (ZJU)
+// @name         PS Calendar to ICS (iZJU)
 // @namespace    https://github.com/yourname/ps-calendar-to-ics
-// @version      0.3.8
+// @version      0.3.8.1
 // @description  将 PeopleSoft「我的每周课程表-列表查看」导出为 ICS 文件（支持中文/英文标签，Asia/Shanghai）
 // @author       You
 // @match        https://scrsprd.zju.edu.cn/psc/CSPRD/EMPLOYEE/HRMS/*
@@ -592,7 +592,7 @@
     const dtstamp = toUTCStringBasic(now);
 
     lines.push("BEGIN:VCALENDAR");
-    lines.push("PRODID:-//" + APP_NAME + "//EN");
+    lines.push("PRODID:-//" + APP_NAME + " (iZJU)//EN");
     lines.push("VERSION:2.0");
     lines.push("CALSCALE:GREGORIAN");
     
@@ -764,7 +764,7 @@
     const termPart = parsed.termTitle || "课程表";
     const now = new Date();
     const datePart = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
-    return `${termPart}-${datePart}.ics`;
+    return `iZJU-${termPart}-${datePart}.ics`;
   }
 
   function triggerDownload(content, filename) {
