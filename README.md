@@ -4,7 +4,7 @@
 > 将 PeopleSoft 课程表一键导出为标准 ICS 日历文件的 Tampermonkey 用户脚本
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/Version-3.10-blue.svg)](./VERSION.md)
+[![Version](https://img.shields.io/badge/Version-0.3.11-blue.svg)](./VERSION.md)
 [![Platform](https://img.shields.io/badge/Platform-Tampermonkey-green.svg)](https://www.tampermonkey.net/)
 
 ---

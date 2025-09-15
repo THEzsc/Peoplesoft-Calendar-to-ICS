@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PS Calendar to ICS (iZJU)
 // @namespace    https://github.com/yourname/ps-calendar-to-ics
-// @version      3.10
+// @version      0.3.11
 // @description  将 PeopleSoft「我的每周课程表-列表查看」导出为 ICS 文件（支持中文/英文标签，Asia/Shanghai）
 // @author       You
 // @match        https://scrsprd.zju.edu.cn/psc/CSPRD/EMPLOYEE/HRMS/*
@@ -411,19 +411,19 @@
     if (!timeStr) return null;
 
     // Parse English format first: "Mo 2:00PM - 3:50PM" or "Mon 14:00 - 15:50" etc.
-    const englishMatch = timeStr.match(/(Su|Mo|Tu|We|Th|Fr|Sa|Sun|Mon|Tue|Wed|Thu|Fri|Sat|Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\s+(\d{1,2}):(\d{2})(?:(AM|PM)|)\s*-\s*(\d{1,2}):(\d{2})(?:(AM|PM)|)/);
+    const englishMatch = timeStr.match(/(Su|Mo|Tu|We|Th|Fr|Sa|Sun\.?|Mon\.?|Tue\.?|Tues\.?|Wed\.?|Thu\.?|Thur\.?|Fri\.?|Sat\.?|Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\s+(\d{1,2}):(\d{2})(?:(AM|PM)|)\s*-\s*(\d{1,2}):(\d{2})(?:(AM|PM)|)/);
     if (englishMatch) {
       const [, dayAbbr, startHour, startMin, startAmPm, endHour, endMin, endAmPm] = englishMatch;
       
       // Convert English day abbreviation to number (0 = Sunday, 1 = Monday, etc.)
       const dayMap = { 
-        'Su': 0, 'Sun': 0, 'Sunday': 0,
-        'Mo': 1, 'Mon': 1, 'Monday': 1,
-        'Tu': 2, 'Tue': 2, 'Tuesday': 2,
-        'We': 3, 'Wed': 3, 'Wednesday': 3,
-        'Th': 4, 'Thu': 4, 'Thursday': 4,
-        'Fr': 5, 'Fri': 5, 'Friday': 5,
-        'Sa': 6, 'Sat': 6, 'Saturday': 6
+        'Su': 0, 'Sun': 0, 'Sun.': 0, 'Sunday': 0,
+        'Mo': 1, 'Mon': 1, 'Mon.': 1, 'Monday': 1,
+        'Tu': 2, 'Tue': 2, 'Tue.': 2, 'Tues': 2, 'Tues.': 2, 'Tuesday': 2,
+        'We': 3, 'Wed': 3, 'Wed.': 3, 'Wednesday': 3,
+        'Th': 4, 'Thu': 4, 'Thu.': 4, 'Thur': 4, 'Thur.': 4, 'Thursday': 4,
+        'Fr': 5, 'Fri': 5, 'Fri.': 5, 'Friday': 5,
+        'Sa': 6, 'Sat': 6, 'Sat.': 6, 'Saturday': 6
       };
       const dayOfWeek = dayMap[dayAbbr];
       
