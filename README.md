@@ -4,7 +4,7 @@
 > 将 PeopleSoft 课程表一键导出为标准 ICS 日历文件的 Tampermonkey 用户脚本
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/Version-0.3.8.2-blue.svg)](./VERSION.md)
+[![Version](https://img.shields.io/badge/Version-0.3.8.3-blue.svg)](./VERSION.md)
 [![Platform](https://img.shields.io/badge/Platform-Tampermonkey-green.svg)](https://www.tampermonkey.net/)
 
 ---
@@ -45,6 +45,7 @@
 > 🚀 **一键安装**: 通过 OpenUserJS 平台快速部署
 
 | 步骤 | 操作说明 | 链接/说明 |
+
 |------|----------|-----------|
 | 1️⃣ | 安装浏览器扩展 | [Tampermonkey 官方下载](https://www.tampermonkey.net/) |
 | 2️⃣ | 一键安装脚本 | [📥 OpenUserJS 安装链接](https://openuserjs.org/scripts/THEzsc/PS_Calendar_to_ICS_(ZJU)) |

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PS Calendar to ICS (iZJU)
 // @namespace    https://github.com/yourname/ps-calendar-to-ics
-// @version      0.3.8.2
+// @version      0.3.8.3
 // @description  将 PeopleSoft「我的每周课程表-列表查看」导出为 ICS 文件（支持中文/英文标签，Asia/Shanghai）
 // @author       You
 // @match        https://scrsprd.zju.edu.cn/psc/CSPRD/EMPLOYEE/HRMS/*

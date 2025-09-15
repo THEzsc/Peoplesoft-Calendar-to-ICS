@@ -1,0 +1,32 @@
+# 忽略下载和测试文件
+downloads/
+
+# 忽略临时文件和编辑器文件
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# 忽略IDE配置文件
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# 忽略日志文件
+*.log
+logs/
+
+# 忽略压缩文件
+*.zip
+*.rar
+*.7z
+*.tar.gz
+
+# 忽略系统文件
+.env
+.env.local
+.env.*.local
