@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PS Calendar to ICS (ZJU)
 // @namespace    https://github.com/yourname/ps-calendar-to-ics
-// @version      0.3.9
+// @version      0.3.8
 // @description  将 PeopleSoft「我的每周课程表-列表查看」导出为 ICS 文件（支持中文/英文标签，Asia/Shanghai）
 // @author       You
 // @match        https://scrsprd.zju.edu.cn/psc/CSPRD/EMPLOYEE/HRMS/*
@@ -513,41 +513,44 @@
     const endDate = event.endDate;
     const targetDaysOfWeek = event.days;
     
+    // Calculate total weeks
+    const totalDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+    const totalWeeks = Math.ceil(totalDays / 7);
+    
     // Find the first occurrence date
     let firstOccurrence = new Date(startDate);
     while (!targetDaysOfWeek.includes(firstOccurrence.getDay())) {
       firstOccurrence.setDate(firstOccurrence.getDate() + 1);
     }
     
-    // Generate all potential class dates (ignoring holidays first)
-    const potentialDates = [];
-    let currentDate = new Date(firstOccurrence);
-    
-    while (currentDate <= endDate) {
-      const dayOfWeek = currentDate.getDay();
-      if (targetDaysOfWeek.includes(dayOfWeek)) {
-        potentialDates.push(new Date(currentDate));
-      }
-      currentDate.setDate(currentDate.getDate() + 7);
-    }
-    
-    // Filter out dates that should be skipped (holidays)
-    const actualClassDates = [];
+    // Generate all basic dates to find exceptions
+    const basicDates = [];
     const exceptionDates = [];
+    const makeupEvents = [];
     
-    for (const date of potentialDates) {
-      if (shouldSkipDate(date, date.getDay())) {
-        exceptionDates.push(new Date(date));
+    let currentDate = new Date(firstOccurrence);
+    let weekCount = 0;
+    
+    while (currentDate <= endDate && weekCount < totalWeeks) {
+      const dayOfWeek = currentDate.getDay();
+      
+      if (targetDaysOfWeek.includes(dayOfWeek)) {
+        basicDates.push(new Date(currentDate));
+        
+        // Check if this date should be excluded (holiday)
+        if (shouldSkipDate(currentDate, dayOfWeek)) {
+          exceptionDates.push(new Date(currentDate));
+        }
+        
+        // Move to next week
+        currentDate.setDate(currentDate.getDate() + 7);
+        weekCount++;
       } else {
-        actualClassDates.push(new Date(date));
+        currentDate.setDate(currentDate.getDate() + 1);
       }
     }
-    
-    // Detect biweekly pattern by analyzing intervals
-    const patternInfo = detectBiweeklyPattern(actualClassDates, firstOccurrence);
     
     // Find makeup classes
-    const makeupEvents = [];
     let checkDate = new Date(startDate);
     while (checkDate <= endDate) {
       const makeupClass = isMakeupClassDay(checkDate);
@@ -562,67 +565,11 @@
     }
     
     return {
-      firstOccurrence: patternInfo.adjustedStart || firstOccurrence,
-      weekCount: patternInfo.count,
+      firstOccurrence,
+      weekCount: Math.max(1, weekCount),
       dayOfWeek: firstOccurrence.getDay(),
-      interval: patternInfo.interval,
       exceptionDates,
-      makeupEvents,
-      useRdate: patternInfo.useRdate,
-      actualClassDates: patternInfo.useRdate ? actualClassDates : null
-    };
-  }
-  
-  function detectBiweeklyPattern(classDates, firstOccurrence) {
-    if (classDates.length <= 1) {
-      return { count: classDates.length, interval: 1, useRdate: false };
-    }
-    
-    // Calculate intervals between consecutive class dates
-    const intervals = [];
-    for (let i = 1; i < classDates.length; i++) {
-      const daysDiff = Math.round((classDates[i] - classDates[i-1]) / (1000 * 60 * 60 * 24));
-      const weeksDiff = Math.round(daysDiff / 7);
-      intervals.push(weeksDiff);
-    }
-    
-    console.log(APP_NAME, "课程间隔周数:", intervals);
-    
-    // Check for consistent biweekly pattern (every 2 weeks)
-    if (intervals.length >= 2) {
-      const avgInterval = intervals.reduce((sum, interval) => sum + interval, 0) / intervals.length;
-      const isConsistentBiweekly = Math.abs(avgInterval - 2) < 0.5 && 
-                                   intervals.filter(interval => Math.abs(interval - 2) <= 1).length >= intervals.length * 0.7;
-      
-      if (isConsistentBiweekly) {
-        console.log(APP_NAME, "检测到单双周模式，平均间隔:", avgInterval, "周");
-        return {
-          count: classDates.length,
-          interval: 2,
-          adjustedStart: classDates[0], // Use actual first class date
-          useRdate: false // Use RRULE with INTERVAL=2
-        };
-      }
-      
-      // Check for other irregular patterns
-      const hasIrregularPattern = intervals.some(interval => interval !== 1);
-      if (hasIrregularPattern) {
-        console.log(APP_NAME, "检测到不规则上课模式，使用RDATE");
-        return {
-          count: classDates.length,
-          interval: 1,
-          adjustedStart: classDates[0],
-          useRdate: true // Use RDATE for irregular patterns
-        };
-      }
-    }
-    
-    // Default: weekly pattern
-    const totalWeeks = Math.ceil((classDates[classDates.length - 1] - classDates[0]) / (1000 * 60 * 60 * 24 * 7)) + 1;
-    return {
-      count: totalWeeks,
-      interval: 1,
-      useRdate: false
+      makeupEvents
     };
   }
   
@@ -701,26 +648,9 @@
       lines.push("DTSTART;TZID=" + TZID + ":" + toLocalStringBasic(dtStart));
       lines.push("DTEND;TZID=" + TZID + ":" + toLocalStringBasic(dtEnd));
       
-      // Add RRULE or RDATE based on pattern detection
-      if (rruleData.useRdate) {
-        // For irregular patterns, use RDATE to specify exact dates
-        if (rruleData.actualClassDates && rruleData.actualClassDates.length > 1) {
-          const rdates = rruleData.actualClassDates.slice(1)
-            .map(date => toLocalStringBasic(combineDateAndTime(date, representativeEvent.startTime)))
-            .join(",");
-          lines.push(`RDATE;TZID=${TZID}:${rdates}`);
-        }
-        console.log(APP_NAME, `使用RDATE模式，${rruleData.actualClassDates ? rruleData.actualClassDates.length : 0}个上课日期`);
-      } else {
-        // For regular patterns, use RRULE
-        const dayName = getDayName(rruleData.dayOfWeek);
-        let rruleStr = `RRULE:FREQ=WEEKLY;COUNT=${rruleData.weekCount};BYDAY=${dayName}`;
-        if (rruleData.interval && rruleData.interval > 1) {
-          rruleStr += `;INTERVAL=${rruleData.interval}`;
-        }
-        lines.push(rruleStr);
-        console.log(APP_NAME, `使用RRULE模式，${rruleData.weekCount}周，间隔${rruleData.interval}`);
-      }
+      // Add RRULE
+      const dayName = getDayName(rruleData.dayOfWeek);
+      lines.push(`RRULE:FREQ=WEEKLY;COUNT=${rruleData.weekCount};BYDAY=${dayName}`);
       
       // Add EXDATE for holidays
       if (rruleData.exceptionDates.length > 0) {
