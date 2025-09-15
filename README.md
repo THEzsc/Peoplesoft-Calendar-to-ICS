@@ -1,4 +1,4 @@
-`# 📅 PS Calendar to ICS (iZJU)
+# 📅 PS Calendar to ICS (iZJU)
 
 > 🎓 **专为浙江大学国际校区设计**  
 > 将 PeopleSoft 课程表一键导出为标准 ICS 日历文件的 Tampermonkey 用户脚本
