@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PS Calendar to ICS (iZJU)
 // @namespace    https://github.com/yourname/ps-calendar-to-ics
-// @version      0.3.8.3
+// @version      0.3.8.4
 // @description  将 PeopleSoft「我的每周课程表-列表查看」导出为 ICS 文件（支持中文/英文标签，Asia/Shanghai）
 // @author       You
 // @match        https://scrsprd.zju.edu.cn/psc/CSPRD/EMPLOYEE/HRMS/*
@@ -179,9 +179,9 @@
     const text = cleanText(el.textContent);
     if (!text) return false;
     
-    const hasScheduleContent = 
-      /课程表|我的课程|课程号码|日期和时间|开始.结束日期|讲师/i.test(text) ||
-      /Class Schedule|Course|Meeting Times|Instructor/i.test(text);
+      const hasScheduleContent = 
+        /课程表|我的课程|课程号码|日期和时间|开始.结束日期|讲师/i.test(text) ||
+        /Class Schedule|My Class Schedule|Course|Meeting Times|Days.*Times|Component|Instructor|Laboratory|Lecture/i.test(text);
     
     const hasSubstantialContent = text.length > 50;
     const hasCourseTables = el.querySelectorAll('table[id*="CLASS_MTG_VW"], td.PAGROUPDIVIDER').length > 0;
@@ -410,32 +410,75 @@
   function parseDateTimeInfo(timeStr) {
     if (!timeStr) return null;
 
-    // Parse "星期一 2:00PM - 3:50PM" format
-    const match = timeStr.match(/星期([一二三四五六日])\s+(\d+):(\d+)(AM|PM)\s*-\s*(\d+):(\d+)(AM|PM)/);
-    if (!match) return null;
+    // Parse English format first: "Mo 2:00PM - 3:50PM" or "Mon 14:00 - 15:50" etc.
+    const englishMatch = timeStr.match(/(Su|Mo|Tu|We|Th|Fr|Sa|Sun|Mon|Tue|Wed|Thu|Fri|Sat|Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\s+(\d{1,2}):(\d{2})(?:(AM|PM)|)\s*-\s*(\d{1,2}):(\d{2})(?:(AM|PM)|)/);
+    if (englishMatch) {
+      const [, dayAbbr, startHour, startMin, startAmPm, endHour, endMin, endAmPm] = englishMatch;
+      
+      // Convert English day abbreviation to number (0 = Sunday, 1 = Monday, etc.)
+      const dayMap = { 
+        'Su': 0, 'Sun': 0, 'Sunday': 0,
+        'Mo': 1, 'Mon': 1, 'Monday': 1,
+        'Tu': 2, 'Tue': 2, 'Tuesday': 2,
+        'We': 3, 'Wed': 3, 'Wednesday': 3,
+        'Th': 4, 'Thu': 4, 'Thursday': 4,
+        'Fr': 5, 'Fri': 5, 'Friday': 5,
+        'Sa': 6, 'Sat': 6, 'Saturday': 6
+      };
+      const dayOfWeek = dayMap[dayAbbr];
+      
+      if (dayOfWeek === undefined) return null;
 
-    const [, dayChar, startHour, startMin, startAmPm, endHour, endMin, endAmPm] = match;
-    
-    // Convert Chinese day to number (0 = Sunday, 1 = Monday, etc.)
-    const dayMap = { '日': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6 };
-    const dayOfWeek = dayMap[dayChar];
-    
-    if (dayOfWeek === undefined) return null;
+      // Convert to 24-hour format
+      let startHour24 = parseInt(startHour);
+      let endHour24 = parseInt(endHour);
+      
+      // Handle AM/PM if present (12-hour format)
+      if (startAmPm) {
+        if (startAmPm === 'PM' && startHour24 !== 12) startHour24 += 12;
+        if (startAmPm === 'AM' && startHour24 === 12) startHour24 = 0;
+      }
+      if (endAmPm) {
+        if (endAmPm === 'PM' && endHour24 !== 12) endHour24 += 12;
+        if (endAmPm === 'AM' && endHour24 === 12) endHour24 = 0;
+      }
+      // If no AM/PM, assume 24-hour format (already correct)
 
-    // Convert 12-hour to 24-hour format
-    let startHour24 = parseInt(startHour);
-    let endHour24 = parseInt(endHour);
-    
-    if (startAmPm === 'PM' && startHour24 !== 12) startHour24 += 12;
-    if (startAmPm === 'AM' && startHour24 === 12) startHour24 = 0;
-    if (endAmPm === 'PM' && endHour24 !== 12) endHour24 += 12;
-    if (endAmPm === 'AM' && endHour24 === 12) endHour24 = 0;
+      return {
+        days: [dayOfWeek],
+        startTime: { hour: startHour24, minute: parseInt(startMin) },
+        endTime: { hour: endHour24, minute: parseInt(endMin) }
+      };
+    }
 
-    return {
-      days: [dayOfWeek],
-      startTime: { hour: startHour24, minute: parseInt(startMin) },
-      endTime: { hour: endHour24, minute: parseInt(endMin) }
-    };
+    // Parse Chinese format: "星期一 2:00PM - 3:50PM"
+    const chineseMatch = timeStr.match(/星期([一二三四五六日])\s+(\d+):(\d+)(AM|PM)\s*-\s*(\d+):(\d+)(AM|PM)/);
+    if (chineseMatch) {
+      const [, dayChar, startHour, startMin, startAmPm, endHour, endMin, endAmPm] = chineseMatch;
+      
+      // Convert Chinese day to number (0 = Sunday, 1 = Monday, etc.)
+      const dayMap = { '日': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6 };
+      const dayOfWeek = dayMap[dayChar];
+      
+      if (dayOfWeek === undefined) return null;
+
+      // Convert 12-hour to 24-hour format
+      let startHour24 = parseInt(startHour);
+      let endHour24 = parseInt(endHour);
+      
+      if (startAmPm === 'PM' && startHour24 !== 12) startHour24 += 12;
+      if (startAmPm === 'AM' && startHour24 === 12) startHour24 = 0;
+      if (endAmPm === 'PM' && endHour24 !== 12) endHour24 += 12;
+      if (endAmPm === 'AM' && endHour24 === 12) endHour24 = 0;
+
+      return {
+        days: [dayOfWeek],
+        startTime: { hour: startHour24, minute: parseInt(startMin) },
+        endTime: { hour: endHour24, minute: parseInt(endMin) }
+      };
+    }
+
+    return null;
   }
 
   function detectTermTitle(doc) {
@@ -446,14 +489,20 @@
     for (const el of titleCandidates) {
       const t = cleanText(el.textContent);
       if (!t) continue;
-      if (/学期|学年|Term|Session|课程表/i.test(t)) {
+      if (/学期|学年|Term|Session|课程表|Class Schedule/i.test(t)) {
         return t;
       }
     }
     
     const title = (doc.title || "").trim();
     if (title) return title;
-    return "我的课程表";
+    
+    // Detect language and return appropriate default
+    const isEnglish = doc.documentElement.lang === 'en' || 
+                     doc.querySelector('title')?.textContent?.includes('My Class Schedule') ||
+                     doc.querySelector('span')?.textContent?.includes('Component');
+    
+    return isEnglish ? "My Class Schedule" : "我的课程表";
   }
 
   /**
