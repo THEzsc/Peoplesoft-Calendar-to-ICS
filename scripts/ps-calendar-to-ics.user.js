@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PS Calendar to ICS (iZJU)
 // @namespace    https://github.com/yourname/ps-calendar-to-ics
-// @version      0.3.11
+// @version      0.4.1
 // @description  将 PeopleSoft「我的每周课程表-列表查看」导出为 ICS 文件（支持中文/英文标签，Asia/Shanghai）
 // @author       You
 // @match        https://scrsprd.zju.edu.cn/psc/CSPRD/EMPLOYEE/HRMS/*
@@ -17,6 +17,7 @@
   const APP_NAME = "PS Calendar to ICS";
   const TZID = "Asia/Shanghai"; // China Standard Time (no DST)
   const HOST_HINT = "scrsprd.zju.edu.cn";
+  const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
   // 2025-2026学年秋冬学期学术日历
   const ACADEMIC_CALENDAR_2025_2026 = {
@@ -374,6 +375,10 @@
       summary += ` (${section})`;
     }
 
+    const dateRangeList = Array.isArray(dateRange.dateRanges) ? dateRange.dateRanges : [];
+    const firstRange = dateRangeList.length > 0 ? dateRangeList[0] : null;
+    const lastRange = dateRangeList.length > 0 ? dateRangeList[dateRangeList.length - 1] : null;
+
     return {
       summary,
       courseCode,
@@ -386,24 +391,49 @@
       days: timeInfo.days,
       startTime: timeInfo.startTime,
       endTime: timeInfo.endTime,
-      startDate: dateRange.start,
-      endDate: dateRange.end
+      startDate: firstRange ? firstRange.start : dateRange.start,
+      endDate: lastRange ? lastRange.end : dateRange.end,
+      dateRanges: dateRangeList,
+      isBiweekly: Boolean(dateRange.isBiweekly)
     };
   }
 
    function parseStartEndDate(dateStr) {
      if (!dateStr) return null;
-     
-     // Parse "15/09/2025 - 21/09/2025" format
-     // NOTE: The dates in PeopleSoft table only show the current week display range,
-     // not the actual course duration. We need to use the full semester range.
-     const match = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s*-\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-     if (!match) return null;
 
-     // Use the full academic semester range instead of the short display range
+     // Parse single date range: "15/09/2025 - 21/09/2025"
+     // Or multiple date ranges: "15/09/2025 - 21/09/2025, 29/09/2025 - 05/10/2025, ..."
+     const dateRangePattern = /(\d{1,2})\/(\d{1,2})\/(\d{4})\s*-\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/g;
+     const matches = Array.from(dateStr.matchAll(dateRangePattern));
+
+     if (matches.length === 0) return null;
+
+     // Parse all date ranges
+     const dateRanges = matches.map(match => {
+       const [, startDay, startMonth, startYear, endDay, endMonth, endYear] = match;
+       return {
+         start: new Date(parseInt(startYear, 10), parseInt(startMonth, 10) - 1, parseInt(startDay, 10)),
+         end: new Date(parseInt(endYear, 10), parseInt(endMonth, 10) - 1, parseInt(endDay, 10))
+       };
+     });
+
+     // If multiple date ranges, treat as biweekly/irregular pattern
+     if (dateRanges.length > 1) {
+       console.log(APP_NAME, `检测到单双周课程模式，共 ${dateRanges.length} 个日期范围`);
+       return {
+         start: dateRanges[0].start,
+         end: dateRanges[dateRanges.length - 1].end,
+         dateRanges: dateRanges,
+         isBiweekly: true
+       };
+     }
+
+     // Single date range - use full semester range for regular weekly courses
      return {
        start: ACADEMIC_CALENDAR_2025_2026.semesterStart,
-       end: ACADEMIC_CALENDAR_2025_2026.semesterEnd
+       end: ACADEMIC_CALENDAR_2025_2026.semesterEnd,
+       dateRanges: [dateRanges[0]],
+       isBiweekly: false
      };
    }
 
@@ -556,6 +586,169 @@
     return false;
   }
 
+  function isWeeklyRecurringPattern(event) {
+    if (!event) return false;
+    if (event.isBiweekly) {
+      return false;
+    }
+    if (typeof event.weekCoverage === "number") {
+      return event.weekCoverage >= 0.7;
+    }
+    return true;
+  }
+
+  function generateIndividualEventsForDateRange(event) {
+    const sourceDates = Array.isArray(event.occurrenceDates) && event.occurrenceDates.length > 0
+      ? event.occurrenceDates
+      : enumerateOccurrencesFromRanges(event.dateRanges || [], event.days || []);
+
+    return sourceDates.map((date) => ({
+      date: new Date(date),
+      startTime: event.startTime,
+      endTime: event.endTime,
+      summary: event.summary,
+      location: event.location,
+      component: event.component,
+      instructor: event.instructor,
+      section: event.section
+    }));
+  }
+
+  function normalizeDate(date) {
+    if (!(date instanceof Date)) return null;
+    const normalized = new Date(date.getTime());
+    normalized.setHours(0, 0, 0, 0);
+    return normalized;
+  }
+
+  function alignDateToDay(rangeStart, targetDay) {
+    const base = normalizeDate(rangeStart);
+    if (!base) return null;
+    const diff = (targetDay - base.getDay() + 7) % 7;
+    base.setDate(base.getDate() + diff);
+    return base;
+  }
+
+  function enumerateOccurrencesFromRanges(ranges, days) {
+    if (!Array.isArray(ranges) || ranges.length === 0 || !Array.isArray(days) || days.length === 0) {
+      return [];
+    }
+
+    const occurrences = [];
+    const seenKeys = new Set();
+    const uniqueDays = Array.from(new Set(days));
+
+    for (const range of ranges) {
+      const start = normalizeDate(range && range.start);
+      const end = normalizeDate(range && range.end);
+      if (!start || !end || start > end) continue;
+
+      for (const day of uniqueDays) {
+        let current = alignDateToDay(start, day);
+        if (!current) continue;
+        if (current < start) {
+          current.setDate(current.getDate() + 7);
+        }
+        while (current <= end) {
+          const key = current.toISOString().slice(0, 10);
+          if (!seenKeys.has(key)) {
+            occurrences.push(new Date(current.getTime()));
+            seenKeys.add(key);
+          }
+          current.setDate(current.getDate() + 7);
+        }
+      }
+    }
+
+    occurrences.sort((a, b) => a - b);
+    return occurrences;
+  }
+
+  function startOfWeekMonday(date) {
+    const normalized = normalizeDate(date);
+    if (!normalized) return null;
+    const diff = (normalized.getDay() + 6) % 7;
+    normalized.setDate(normalized.getDate() - diff);
+    return normalized;
+  }
+
+  function getWeekKey(date) {
+    const weekStart = startOfWeekMonday(date);
+    return weekStart ? weekStart.toISOString().slice(0, 10) : "";
+  }
+
+  function calculateWeekCoverage(dates) {
+    if (!Array.isArray(dates) || dates.length === 0) {
+      return { coverage: 1, totalWeeks: 0 };
+    }
+
+    const sorted = dates.slice().sort((a, b) => a - b);
+    const weekKeys = new Set(sorted.map(getWeekKey).filter(Boolean));
+
+    const firstWeek = startOfWeekMonday(sorted[0]);
+    const lastWeek = startOfWeekMonday(sorted[sorted.length - 1]);
+    if (!firstWeek || !lastWeek) {
+      return { coverage: 1, totalWeeks: 0 };
+    }
+
+    const totalWeeks = Math.max(1, Math.round((lastWeek - firstWeek) / (7 * DAY_IN_MS)) + 1);
+    return {
+      coverage: weekKeys.size / totalWeeks,
+      totalWeeks
+    };
+  }
+
+  function buildAggregatedEvent(events) {
+    if (!Array.isArray(events) || events.length === 0) {
+      return null;
+    }
+
+    const representative = events.find(ev => ev.section) || events[0];
+    const aggregated = { ...representative };
+    const ranges = [];
+    const seenRanges = new Set();
+    let hasBiweeklyFlag = Boolean(representative && representative.isBiweekly);
+
+    for (const ev of events) {
+      if (ev && ev.isBiweekly) {
+        hasBiweeklyFlag = true;
+      }
+
+      const list = Array.isArray(ev && ev.dateRanges) ? ev.dateRanges : [];
+      for (const range of list) {
+        const start = normalizeDate(range && range.start);
+        const end = normalizeDate(range && range.end);
+        if (!start || !end || start > end) continue;
+
+        const key = `${start.getTime()}-${end.getTime()}`;
+        if (!seenRanges.has(key)) {
+          ranges.push({ start, end });
+          seenRanges.add(key);
+        }
+      }
+    }
+
+    ranges.sort((a, b) => a.start - b.start);
+
+    aggregated.dateRanges = ranges;
+    aggregated.occurrenceDates = enumerateOccurrencesFromRanges(ranges, aggregated.days || []);
+
+    if (aggregated.occurrenceDates.length > 0) {
+      aggregated.startDate = new Date(aggregated.occurrenceDates[0]);
+      aggregated.endDate = new Date(aggregated.occurrenceDates[aggregated.occurrenceDates.length - 1]);
+    } else if (ranges.length > 0) {
+      aggregated.startDate = new Date(ranges[0].start);
+      aggregated.endDate = new Date(ranges[ranges.length - 1].end);
+    }
+
+    const { coverage, totalWeeks } = calculateWeekCoverage(aggregated.occurrenceDates);
+    aggregated.weekCoverage = coverage;
+    aggregated.totalWeeks = totalWeeks;
+    aggregated.isBiweekly = hasBiweeklyFlag || coverage < 0.7;
+
+    return aggregated;
+  }
+
   function generateRRuleAndExceptions(event) {
     // Generate RRULE with EXDATE for holidays and makeup classes
     const startDate = event.startDate;
@@ -644,8 +837,7 @@
     lines.push("PRODID:-//" + APP_NAME + " (iZJU)//EN");
     lines.push("VERSION:2.0");
     lines.push("CALSCALE:GREGORIAN");
-    
-    // Add timezone definition
+
     lines.push("BEGIN:VTIMEZONE");
     lines.push("TZID:" + TZID);
     lines.push("BEGIN:STANDARD");
@@ -656,109 +848,137 @@
     lines.push("END:STANDARD");
     lines.push("END:VTIMEZONE");
 
-    // Group events by unique course to reduce file size
-    // Use base course info without section to avoid duplicates
     const eventGroups = new Map();
-    
+
     for (const ev of parsed.events) {
-      // Build base summary without section for grouping
       let baseSummary = ev.courseCode || "课程";
       if (ev.component) {
         baseSummary += ` - ${ev.component}`;
       }
-      // Don't include section in grouping key to merge similar courses
-      
-      const groupKey = `${baseSummary}|${ev.location}|${ev.instructor}|${ev.days.join(',')}`;
+      const groupKey = `${baseSummary}|${ev.location}|${ev.instructor}|${(ev.days || []).join(',')}`;
       if (!eventGroups.has(groupKey)) {
         eventGroups.set(groupKey, []);
       }
       eventGroups.get(groupKey).push(ev);
     }
-    
-    console.log(APP_NAME, `将 ${parsed.events.length} 个事件分组为 ${eventGroups.size} 组`);
-    
-    // Process each group using RRULE + EXDATE
-    for (const [groupKey, events] of eventGroups) {
-      // Prefer events with section info (more specific) over those without
-      const representativeEvent = events.find(ev => ev.section) || events[0];
-      
-      // Generate RRULE and exceptions
-      const rruleData = generateRRuleAndExceptions(representativeEvent);
-      
-      console.log(APP_NAME, `课程 "${representativeEvent.summary}": ${rruleData.weekCount} 周, ${rruleData.exceptionDates.length} 个例外, ${rruleData.makeupEvents.length} 个补课`);
-      
-      // Create main recurring event
-      const dtStart = combineDateAndTime(rruleData.firstOccurrence, representativeEvent.startTime);
-      const dtEnd = combineDateAndTime(rruleData.firstOccurrence, representativeEvent.endTime);
-      
-      lines.push("BEGIN:VEVENT");
-      lines.push("UID:" + buildUID(representativeEvent, now, 0));
-      lines.push("DTSTAMP:" + dtstamp + "Z");
-      lines.push("DTSTART;TZID=" + TZID + ":" + toLocalStringBasic(dtStart));
-      lines.push("DTEND;TZID=" + TZID + ":" + toLocalStringBasic(dtEnd));
-      
-      // Add RRULE
-      const dayName = getDayName(rruleData.dayOfWeek);
-      lines.push(`RRULE:FREQ=WEEKLY;COUNT=${rruleData.weekCount};BYDAY=${dayName}`);
-      
-      // Add EXDATE for holidays
-      if (rruleData.exceptionDates.length > 0) {
-        const exdates = rruleData.exceptionDates
-          .map(date => toLocalStringBasic(combineDateAndTime(date, representativeEvent.startTime)))
-          .join(",");
-        lines.push(`EXDATE;TZID=${TZID}:${exdates}`);
+
+    console.log(APP_NAME, `共 ${parsed.events.length} 个事件分组为 ${eventGroups.size} 组`);
+
+    for (const events of eventGroups.values()) {
+      const aggregatedEvent = buildAggregatedEvent(events);
+      if (!aggregatedEvent) {
+        continue;
       }
-      
-      lines.push("SUMMARY:" + escapeICSText(representativeEvent.summary));
-      
-      if (representativeEvent.location) {
-        lines.push("LOCATION:" + escapeICSText(representativeEvent.location));
-      }
-      
-      // Compact description
-      let desc = [];
-      if (representativeEvent.component) desc.push(`类型: ${representativeEvent.component}`);
-      if (representativeEvent.instructor) desc.push(`讲师: ${representativeEvent.instructor}`);
-      if (desc.length > 0) {
-        lines.push("DESCRIPTION:" + escapeICSText(desc.join("\n")));
-      }
-      
-      lines.push("END:VEVENT");
-      
-      // Add makeup events as separate events
-      for (let i = 0; i < rruleData.makeupEvents.length; i++) {
-        const makeupEvent = rruleData.makeupEvents[i];
-        const makeupStart = combineDateAndTime(makeupEvent.date, representativeEvent.startTime);
-        const makeupEnd = combineDateAndTime(makeupEvent.date, representativeEvent.endTime);
-        
+
+      if (isWeeklyRecurringPattern(aggregatedEvent)) {
+        const rruleData = generateRRuleAndExceptions(aggregatedEvent);
+
+        console.log(
+          APP_NAME,
+          `常规课程 "${aggregatedEvent.summary}": ${rruleData.weekCount} 次, ${rruleData.exceptionDates.length} 个例外, ${rruleData.makeupEvents.length} 个补课`
+        );
+
+        const dtStart = combineDateAndTime(rruleData.firstOccurrence, aggregatedEvent.startTime);
+        const dtEnd = combineDateAndTime(rruleData.firstOccurrence, aggregatedEvent.endTime);
+
         lines.push("BEGIN:VEVENT");
-        lines.push("UID:" + buildUID(representativeEvent, now, `makeup-${i}`));
+        lines.push("UID:" + buildUID(aggregatedEvent, now, 0));
         lines.push("DTSTAMP:" + dtstamp + "Z");
-        lines.push("DTSTART;TZID=" + TZID + ":" + toLocalStringBasic(makeupStart));
-        lines.push("DTEND;TZID=" + TZID + ":" + toLocalStringBasic(makeupEnd));
-        lines.push("SUMMARY:" + escapeICSText(representativeEvent.summary + " (调课)"));
-        
-        if (representativeEvent.location) {
-          lines.push("LOCATION:" + escapeICSText(representativeEvent.location));
+        lines.push("DTSTART;TZID=" + TZID + ":" + toLocalStringBasic(dtStart));
+        lines.push("DTEND;TZID=" + TZID + ":" + toLocalStringBasic(dtEnd));
+
+        const dayName = getDayName(rruleData.dayOfWeek);
+        lines.push(`RRULE:FREQ=WEEKLY;COUNT=${rruleData.weekCount};BYDAY=${dayName}`);
+
+        if (rruleData.exceptionDates.length > 0) {
+          const exdates = rruleData.exceptionDates
+            .map((date) => toLocalStringBasic(combineDateAndTime(date, aggregatedEvent.startTime)))
+            .join(",");
+          lines.push(`EXDATE;TZID=${TZID}:${exdates}`);
         }
-        
-        let makeupDesc = [];
-        if (representativeEvent.component) makeupDesc.push(`类型: ${representativeEvent.component}`);
-        if (representativeEvent.instructor) makeupDesc.push(`讲师: ${representativeEvent.instructor}`);
-        makeupDesc.push(`注: ${makeupEvent.note}`);
-        
-        lines.push("DESCRIPTION:" + escapeICSText(makeupDesc.join("\n")));
+
+        lines.push("SUMMARY:" + escapeICSText(aggregatedEvent.summary));
+
+        if (aggregatedEvent.location) {
+          lines.push("LOCATION:" + escapeICSText(aggregatedEvent.location));
+        }
+
+        const desc = [];
+        if (aggregatedEvent.component) desc.push(`类型: ${aggregatedEvent.component}`);
+        if (aggregatedEvent.section) desc.push(`班级: ${aggregatedEvent.section}`);
+        if (aggregatedEvent.instructor) desc.push(`讲师: ${aggregatedEvent.instructor}`);
+        if (desc.length > 0) {
+          lines.push("DESCRIPTION:" + escapeICSText(desc.join("\n")));
+        }
+
         lines.push("END:VEVENT");
+
+        for (let i = 0; i < rruleData.makeupEvents.length; i++) {
+          const makeupEvent = rruleData.makeupEvents[i];
+          const makeupStart = combineDateAndTime(makeupEvent.date, aggregatedEvent.startTime);
+          const makeupEnd = combineDateAndTime(makeupEvent.date, aggregatedEvent.endTime);
+
+          lines.push("BEGIN:VEVENT");
+          lines.push("UID:" + buildUID(aggregatedEvent, now, `makeup-${i}`));
+          lines.push("DTSTAMP:" + dtstamp + "Z");
+          lines.push("DTSTART;TZID=" + TZID + ":" + toLocalStringBasic(makeupStart));
+          lines.push("DTEND;TZID=" + TZID + ":" + toLocalStringBasic(makeupEnd));
+          lines.push("SUMMARY:" + escapeICSText(aggregatedEvent.summary + " (调课)"));
+
+          if (aggregatedEvent.location) {
+            lines.push("LOCATION:" + escapeICSText(aggregatedEvent.location));
+          }
+
+          const makeupDesc = [];
+          if (aggregatedEvent.component) makeupDesc.push(`类型: ${aggregatedEvent.component}`);
+          if (aggregatedEvent.section) makeupDesc.push(`班级: ${aggregatedEvent.section}`);
+          if (aggregatedEvent.instructor) makeupDesc.push(`讲师: ${aggregatedEvent.instructor}`);
+          makeupDesc.push(`注: ${makeupEvent.note}`);
+
+          lines.push("DESCRIPTION:" + escapeICSText(makeupDesc.join("\n")));
+          lines.push("END:VEVENT");
+        }
+      } else {
+        const individualEvents = generateIndividualEventsForDateRange(aggregatedEvent);
+
+        console.log(APP_NAME, `单双周课程 "${aggregatedEvent.summary}": 生成 ${individualEvents.length} 个独立事件`);
+
+        for (let i = 0; i < individualEvents.length; i++) {
+          const event = individualEvents[i];
+          const dtStart = combineDateAndTime(event.date, event.startTime);
+          const dtEnd = combineDateAndTime(event.date, event.endTime);
+
+          lines.push("BEGIN:VEVENT");
+          lines.push("UID:" + buildUID(aggregatedEvent, now, `individual-${i}`));
+          lines.push("DTSTAMP:" + dtstamp + "Z");
+          lines.push("DTSTART;TZID=" + TZID + ":" + toLocalStringBasic(dtStart));
+          lines.push("DTEND;TZID=" + TZID + ":" + toLocalStringBasic(dtEnd));
+          lines.push("SUMMARY:" + escapeICSText(event.summary));
+
+          if (event.location) {
+            lines.push("LOCATION:" + escapeICSText(event.location));
+          }
+
+          const desc = [];
+          if (event.component) desc.push(`类型: ${event.component}`);
+          if (event.section) desc.push(`班级: ${event.section}`);
+          if (event.instructor) desc.push(`讲师: ${event.instructor}`);
+          if (desc.length > 0) {
+            lines.push("DESCRIPTION:" + escapeICSText(desc.join("\n")));
+          }
+
+          lines.push("END:VEVENT");
+        }
       }
     }
-    
-    // Add special events (holidays, campus activities) - simplified
+
     addSpecialEventsToICS(lines, now, dtstamp);
 
     lines.push("END:VCALENDAR");
-    
-    console.log(APP_NAME, `生成的 ICS 内容长度: ${lines.join('\r\n').length} 字符`);
-    return lines.join("\r\n");
+
+    console.log(APP_NAME, `生成的 ICS 数据长度: ${lines.join('\r\n').length} 字节`);
+    return lines.join("
+");
   }
 
   function addSpecialEventsToICS(lines, now, dtstamp) {
