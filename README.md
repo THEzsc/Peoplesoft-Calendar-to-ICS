@@ -3,13 +3,15 @@
 将 PeopleSoft「我的每周课程表-列表查看」一键导出为 .ics 日历文件（Asia/Shanghai）。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/Version-0.5.0-blue.svg)](./VERSION.md)
+[![Version](https://img.shields.io/badge/Version-0.5.1-blue.svg)](./VERSION.md)
 [![Platform](https://img.shields.io/badge/Platform-Tampermonkey-green.svg)](https://www.tampermonkey.net/)
 
 ## 链接
 
-- [脚本](https://openuserjs.org/scripts/THEzsc/PS_Calendar_to_ICS_(iZJU)/)
+- [👍Greasyfork脚本](https://greasyfork.org/zh-CN/scripts/561424-ps-calendar-to-ics-izju)
+- [Openusejs脚本](https://openuserjs.org/scripts/THEzsc/PS_Calendar_to_ICS_(iZJU)/)
 - [博客](https://tzblog.tech/posts/iZJUCalendar/)
+- [Github](https://github.com/THEzsc/Peoplesoft-Calendar-to-ICS)
 
 ## 功能
 
