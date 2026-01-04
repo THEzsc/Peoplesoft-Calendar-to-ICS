@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         PS Calendar to ICS (iZJU)
 // @namespace    https://github.com/yourname/ps-calendar-to-ics
-// @version      0.4.1
+// @version      0.5.0
 // @description  将 PeopleSoft「我的每周课程表-列表查看」导出为 ICS 文件（支持中文/英文标签，Asia/Shanghai）
 // @author       You
 // @match        https://scrsprd.zju.edu.cn/psc/CSPRD/EMPLOYEE/HRMS/*
@@ -19,55 +19,51 @@
   const HOST_HINT = "scrsprd.zju.edu.cn";
   const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
-  // 2025-2026学年秋冬学期学术日历
+  // 2025-2026学年春夏学期学术日历
   const ACADEMIC_CALENDAR_2025_2026 = {
-    semesterStart: new Date(2025, 8, 15), // 9月15日
-    semesterEnd: new Date(2026, 0, 10),   // 1月10日（包含考试期间）
     holidays: [
-      // 中秋节、国庆节放假调休
-      { start: new Date(2025, 9, 1), end: new Date(2025, 9, 8), name: "中秋节、国庆节放假调休" },
-      // 元旦放假
-      { start: new Date(2026, 0, 1), end: new Date(2026, 0, 1), name: "元旦放假" }
+      // 寒假（至报到注册前）
+      { start: new Date(2026, 0, 26), end: new Date(2026, 2, 1), name: "寒假" },
+      // 清明节放假
+      { start: new Date(2026, 3, 5), end: new Date(2026, 3, 5), name: "清明节放假" },
+      // 劳动节放假
+      { start: new Date(2026, 4, 1), end: new Date(2026, 4, 5), name: "劳动节放假" },
+      // 端午节放假
+      { start: new Date(2026, 5, 19), end: new Date(2026, 5, 19), name: "端午节放假" }
     ],
     makeupClasses: [
-      // 9月28日工作日，授10月3日周五课
-      { date: new Date(2025, 8, 28), originalDay: 5, name: "授10月3日周五课" }, // 5 = Friday
-      // 10月11日工作日，授10月8日周三课  
-      { date: new Date(2025, 9, 11), originalDay: 3, name: "授10月8日周三课" }  // 3 = Wednesday
+      // 劳动节调休：5月9日（周六）补5月1日（周五）课
+      { date: new Date(2026, 4, 9), originalDay: 5, name: "劳动节调休补班" }
     ],
     specialEvents: [
-      // 新生报到注册
-      { date: new Date(2025, 7, 22), name: "新生报到注册", type: "allday" },
-      // 本科生新生始业教育、军训
-      { start: new Date(2025, 7, 23), end: new Date(2025, 8, 14), name: "本科生新生始业教育、军训", type: "allday" },
-      // 本科生开学典礼
-      { date: new Date(2025, 7, 24), name: "本科生开学典礼", type: "allday" },
-      // UIUC校历课程开始
-      { date: new Date(2025, 7, 25), name: "UIUC校历课程-课程开始", type: "allday" },
-      // ZJUI二轮选课开始
-      { date: new Date(2025, 7, 25), name: "ZJUI二轮选课开始", type: "allday" },
-      // UIUC校历课程本科生加课截止时间
-      { date: new Date(2025, 8, 8), name: "UIUC校历课程本科生加课截止时间", type: "allday" },
-      // 本科生老生报到注册
-      { date: new Date(2025, 8, 12), name: "本科生老生报到注册", type: "allday" },
-      // 本科生选课截止
-      { date: new Date(2025, 8, 19), name: "本科生选课截止", type: "allday" },
-      // UIUC校历课程本科生退课截止日期
-      { date: new Date(2025, 9, 17), name: "UIUC校历课程本科生退课截止日期", type: "allday" },
-      // 秋季校运动会停课
-      { start: new Date(2025, 9, 24), end: new Date(2025, 9, 26), name: "秋季校运动会停课", type: "no_class" },
-      // 本科生申请退课截止日期
-      { date: new Date(2025, 10, 7), name: "本科生申请退课截止日期", type: "allday" },
-      // 国际校区2025年辞旧迎新活动
-      { date: new Date(2025, 11, 21), name: "国际校区2025年辞旧迎新活动", type: "allday" },
+      // 春夏学期课程开始
+      { date: new Date(2026, 0, 12), name: "春夏学期课程开始", type: "allday" },
+      // 学生寒假开始（2月17日春节）
+      { date: new Date(2026, 0, 26), name: "学生寒假开始（2月17日春节）", type: "allday" },
+      // 本科生、研究生报到注册，春季入学博士新生报到
+      { date: new Date(2026, 2, 1), name: "本科生、研究生报到注册，春季入学博士新生报到", type: "allday" },
+      // 春夏学期开始上课
+      { date: new Date(2026, 2, 2), name: "春夏学期开始上课", type: "allday" },
+      // 春季研究生毕业教育及离校（含春季毕业典礼）
+      { start: new Date(2026, 2, 21), end: new Date(2026, 2, 30), name: "春季研究生毕业教育及离校（含春季毕业典礼）", type: "allday" },
+      // 清明节放假（调休、补课安排另行通知）
+      { date: new Date(2026, 3, 5), name: "清明节放假（调休、补课安排另行通知）", type: "allday" },
+      // 春季校运动会
+      { start: new Date(2026, 3, 18), end: new Date(2026, 3, 19), name: "春季校运动会", type: "allday" },
+      // 劳动节放假（调休、补课安排另行通知）
+      { start: new Date(2026, 4, 1), end: new Date(2026, 4, 5), name: "劳动节放假（调休、补课安排另行通知）", type: "allday" },
+      // 校庆日
+      { date: new Date(2026, 4, 21), name: "校庆日", type: "allday" },
       // 课程结束
-      { date: new Date(2025, 11, 26), name: "课程结束", type: "allday" },
+      { date: new Date(2026, 4, 22), name: "课程结束", type: "allday" },
       // 复习与考试
-      { start: new Date(2025, 11, 29), end: new Date(2025, 11, 30), name: "复习与考试", type: "allday" },
-      // 浙江大学学生节
-      { date: new Date(2025, 11, 31), name: "浙江大学学生节", type: "allday" },
-      // 复习与考试（1月）
-      { start: new Date(2026, 0, 2), end: new Date(2026, 0, 10), name: "复习与考试", type: "allday" }
+      { start: new Date(2026, 4, 23), end: new Date(2026, 5, 3), name: "复习与考试", type: "allday" },
+      // 学生暑假开始（非毕业生）
+      { date: new Date(2026, 5, 4), name: "学生暑假开始（非毕业生）", type: "allday" },
+      // 端午节放假
+      { date: new Date(2026, 5, 19), name: "端午节放假", type: "allday" },
+      // 毕业教育及离校（含夏季毕业典礼）
+      { start: new Date(2026, 5, 21), end: new Date(2026, 5, 30), name: "毕业教育及离校（含夏季毕业典礼）", type: "allday" }
     ]
   };
 
@@ -137,57 +133,8 @@
   }
 
   function findScheduleRoot(doc) {
-    // Look for course schedule container based on real HTML structure
-    const selectors = [
-      'div[id*="DERIVED_REGFRM1_DESCR20"]', // Course container
-      'table[id*="CLASS_MTG_VW"]', // Meeting time table
-      'div[id*="win0divSTDNT_ENRL_SSV2"]', // Original container
-    ];
-
-    for (const sel of selectors) {
-      const elements = Array.from(doc.querySelectorAll(sel));
-      for (const el of elements) {
-        if (isScheduleContainer(el)) {
-          return el;
-        }
-      }
-    }
-
-    // Fallback: look for elements containing course schedule indicators
-    const fallbackSelectors = [
-      'td.PAGROUPDIVIDER', // Course title divider
-      'th[abbr*="课程号码"]', // Course number header
-      'th[abbr*="日期和时间"]', // Date and time header
-    ];
-
-    for (const sel of fallbackSelectors) {
-      const el = doc.querySelector(sel);
-      if (el) {
-        let parent = el;
-        for (let i = 0; i < 10 && parent; i++) {
-          parent = parent.parentElement;
-          if (parent && isScheduleContainer(parent)) {
-            return parent;
-          }
-        }
-      }
-    }
-
-    return null;
-  }
-
-  function isScheduleContainer(el) {
-    const text = cleanText(el.textContent);
-    if (!text) return false;
-    
-    const hasScheduleContent = 
-      /课程表|我的课程|课程号码|日期和时间|开始.结束日期|讲师/i.test(text) ||
-      /Class Schedule|My Class Schedule|Course|Meeting Times|Days.*Times|Component|Instructor|Laboratory|Lecture/i.test(text);
-    
-    const hasSubstantialContent = text.length > 50;
-    const hasCourseTables = el.querySelectorAll('table[id*="CLASS_MTG_VW"], td.PAGROUPDIVIDER').length > 0;
-    
-    return hasScheduleContent && (hasSubstantialContent || hasCourseTables);
+    return doc.querySelector('table[id^="CLASS_MTG_VW$scroll"]') ||
+           doc.querySelector('div[id^="win0divDERIVED_REGFRM1_DESCR20"]');
   }
 
   function injectExportButton(doc) {
@@ -251,7 +198,9 @@
     let termTitle = detectTermTitle(doc);
 
     // Find all course containers
-    const courseContainers = Array.from(doc.querySelectorAll('div[id*="DERIVED_REGFRM1_DESCR20"]'));
+    const courseContainers = Array.from(
+      doc.querySelectorAll('div[id^="win0divDERIVED_REGFRM1_DESCR20"]')
+    ).filter(container => container.querySelector('table[id^="CLASS_MTG_VW$scroll"]'));
     
     console.log(APP_NAME, `找到 ${courseContainers.length} 个课程容器`);
 
@@ -272,25 +221,12 @@
     
     // Get course title from PAGROUPDIVIDER
     const courseTitleElement = container.querySelector('td.PAGROUPDIVIDER');
-    let currentCourseCode = "";
-    let currentCourseName = "";
-    
-    if (courseTitleElement) {
-      const fullTitle = cleanText(courseTitleElement.textContent);
-      // Parse "CS 101 - 计算导论：工程与科学" format
-      const match = fullTitle.match(/^([A-Z]+\s*\d+)\s*-\s*(.+)$/);
-      if (match) {
-        currentCourseCode = match[1].trim();
-        currentCourseName = match[2].trim();
-      } else {
-        currentCourseName = fullTitle;
-      }
-    }
+    const courseTitle = courseTitleElement ? cleanText(courseTitleElement.textContent) : "";
 
-    console.log(APP_NAME, `解析课程: ${currentCourseCode} - ${currentCourseName}`);
+    console.log(APP_NAME, `解析课程: ${courseTitle || "课程"}`);
 
     // Find the meeting times table
-    const meetingTable = container.querySelector('table[id*="CLASS_MTG_VW"]');
+    const meetingTable = container.querySelector('table[id^="CLASS_MTG_VW$scroll"]');
     if (!meetingTable) {
       console.warn(APP_NAME, "未找到课程时间表");
       return events;
@@ -298,7 +234,13 @@
 
     // Parse each row of the meeting table
     const rows = Array.from(meetingTable.querySelectorAll('tr'));
-    let currentComponent = ""; // Track current component
+    const current = {
+      classNumber: "",
+      section: "",
+      component: "",
+      room: "",
+      instructor: ""
+    };
 
     for (let i = 1; i < rows.length; i++) { // Skip header row
       const row = rows[i];
@@ -315,24 +257,24 @@
         const instructor = cleanText(cells[5].textContent);
         const startEndDate = cleanText(cells[6].textContent);
 
-        // Update current component if not empty (handles continuation rows)
-        if (component) {
-          currentComponent = component;
-        }
+        if (classNumber) current.classNumber = classNumber;
+        if (section) current.section = section;
+        if (component) current.component = component;
+        if (room) current.room = room;
+        if (instructor) current.instructor = instructor;
 
         // Skip rows without essential information
-        if (!dateTime && !startEndDate) continue;
+        if (!dateTime || !startEndDate) continue;
 
         // Parse the event
         const event = parseScheduleRow({
-          courseCode: currentCourseCode,
-          courseName: currentCourseName,
-          classNumber,
-          section,
-          component: currentComponent,
+          courseTitle,
+          classNumber: current.classNumber,
+          section: current.section,
+          component: current.component,
           dateTime,
-          room,
-          instructor,
+          room: room || current.room,
+          instructor: instructor || current.instructor,
           startEndDate
         });
 
@@ -349,7 +291,7 @@
   }
 
   function parseScheduleRow(data) {
-    const { courseCode, courseName, classNumber, section, component, dateTime, room, instructor, startEndDate } = data;
+    const { courseTitle, classNumber, section, component, dateTime, room, instructor, startEndDate } = data;
 
     // Parse date range
     const dateRange = parseStartEndDate(startEndDate);
@@ -365,15 +307,11 @@
       return null;
     }
 
-    // Build event summary using course code + component (calendar-friendly format)
-    let summary = courseCode || "课程";
-    if (component) {
-      // Use more calendar-friendly format instead of square brackets
-      summary += ` - ${component}`;
-    }
-    if (section) {
-      summary += ` (${section})`;
-    }
+    // Build event summary using course title + component (calendar-friendly format)
+    const titleBase = courseTitle || "课程";
+    let summary = titleBase;
+    if (component) summary += ` - ${component}`;
+    if (section) summary += ` (${section})`;
 
     const dateRangeList = Array.isArray(dateRange.dateRanges) ? dateRange.dateRanges : [];
     const firstRange = dateRangeList.length > 0 ? dateRangeList[0] : null;
@@ -381,8 +319,7 @@
 
     return {
       summary,
-      courseCode,
-      courseName,
+      courseTitle: titleBase,
       component,
       section,
       classNumber,
@@ -417,122 +354,78 @@
        };
      });
 
-     // If multiple date ranges, treat as biweekly/irregular pattern
-     if (dateRanges.length > 1) {
-       console.log(APP_NAME, `检测到单双周课程模式，共 ${dateRanges.length} 个日期范围`);
-       return {
-         start: dateRanges[0].start,
-         end: dateRanges[dateRanges.length - 1].end,
-         dateRanges: dateRanges,
-         isBiweekly: true
-       };
-     }
-
-     // Single date range - use full semester range for regular weekly courses
      return {
-       start: ACADEMIC_CALENDAR_2025_2026.semesterStart,
-       end: ACADEMIC_CALENDAR_2025_2026.semesterEnd,
-       dateRanges: [dateRanges[0]],
-       isBiweekly: false
+       start: dateRanges[0].start,
+       end: dateRanges[dateRanges.length - 1].end,
+       dateRanges,
+       isBiweekly: dateRanges.length > 1
      };
    }
 
   function parseDateTimeInfo(timeStr) {
     if (!timeStr) return null;
 
-    // Parse English format first: "Mo 2:00PM - 3:50PM" or "Mon 14:00 - 15:50" etc.
-    const englishMatch = timeStr.match(/(Su|Mo|Tu|We|Th|Fr|Sa|Sun\.?|Mon\.?|Tue\.?|Tues\.?|Wed\.?|Thu\.?|Thur\.?|Fri\.?|Sat\.?|Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\s+(\d{1,2}):(\d{2})(?:(AM|PM)|)\s*-\s*(\d{1,2}):(\d{2})(?:(AM|PM)|)/);
-    if (englishMatch) {
-      const [, dayAbbr, startHour, startMin, startAmPm, endHour, endMin, endAmPm] = englishMatch;
-      
-      // Convert English day abbreviation to number (0 = Sunday, 1 = Monday, etc.)
-      const dayMap = { 
-        'Su': 0, 'Sun': 0, 'Sun.': 0, 'Sunday': 0,
-        'Mo': 1, 'Mon': 1, 'Mon.': 1, 'Monday': 1,
-        'Tu': 2, 'Tue': 2, 'Tue.': 2, 'Tues': 2, 'Tues.': 2, 'Tuesday': 2,
-        'We': 3, 'Wed': 3, 'Wed.': 3, 'Wednesday': 3,
-        'Th': 4, 'Thu': 4, 'Thu.': 4, 'Thur': 4, 'Thur.': 4, 'Thursday': 4,
-        'Fr': 5, 'Fri': 5, 'Fri.': 5, 'Friday': 5,
-        'Sa': 6, 'Sat': 6, 'Sat.': 6, 'Saturday': 6
-      };
-      const dayOfWeek = dayMap[dayAbbr];
-      
-      if (dayOfWeek === undefined) return null;
+    const text = cleanText(timeStr);
+    if (!text) return null;
 
-      // Convert to 24-hour format
-      let startHour24 = parseInt(startHour);
-      let endHour24 = parseInt(endHour);
-      
-      // Handle AM/PM if present (12-hour format)
-      if (startAmPm) {
-        if (startAmPm === 'PM' && startHour24 !== 12) startHour24 += 12;
-        if (startAmPm === 'AM' && startHour24 === 12) startHour24 = 0;
-      }
-      if (endAmPm) {
-        if (endAmPm === 'PM' && endHour24 !== 12) endHour24 += 12;
-        if (endAmPm === 'AM' && endHour24 === 12) endHour24 = 0;
-      }
-      // If no AM/PM, assume 24-hour format (already correct)
+    const zhMatch = text.match(/^(?:星期|周)([一二三四五六日天])\s*(.+)$/);
+    const enMatch = text.match(/^(Su|Mo|Tu|We|Th|Fr|Sa|Sun\.?|Mon\.?|Tue\.?|Tues\.?|Wed\.?|Thu\.?|Thur\.?|Fri\.?|Sat\.?|Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\b\s*(.+)$/i);
 
-      return {
-        days: [dayOfWeek],
-        startTime: { hour: startHour24, minute: parseInt(startMin) },
-        endTime: { hour: endHour24, minute: parseInt(endMin) }
-      };
+    const zhDayMap = { '日': 0, '天': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6 };
+    const enDayMap = {
+      'su': 0, 'sun': 0, 'sun.': 0, 'sunday': 0,
+      'mo': 1, 'mon': 1, 'mon.': 1, 'monday': 1,
+      'tu': 2, 'tue': 2, 'tue.': 2, 'tues': 2, 'tues.': 2, 'tuesday': 2,
+      'we': 3, 'wed': 3, 'wed.': 3, 'wednesday': 3,
+      'th': 4, 'thu': 4, 'thu.': 4, 'thur': 4, 'thur.': 4, 'thursday': 4,
+      'fr': 5, 'fri': 5, 'fri.': 5, 'friday': 5,
+      'sa': 6, 'sat': 6, 'sat.': 6, 'saturday': 6
+    };
+
+    let dayOfWeek = null;
+    let timePart = "";
+
+    if (zhMatch) {
+      dayOfWeek = zhDayMap[zhMatch[1]];
+      timePart = zhMatch[2];
+    } else if (enMatch) {
+      dayOfWeek = enDayMap[enMatch[1].toLowerCase()];
+      timePart = enMatch[2];
     }
 
-    // Parse Chinese format: "星期一 2:00PM - 3:50PM"
-    const chineseMatch = timeStr.match(/星期([一二三四五六日])\s+(\d+):(\d+)(AM|PM)\s*-\s*(\d+):(\d+)(AM|PM)/);
-    if (chineseMatch) {
-      const [, dayChar, startHour, startMin, startAmPm, endHour, endMin, endAmPm] = chineseMatch;
-      
-      // Convert Chinese day to number (0 = Sunday, 1 = Monday, etc.)
-      const dayMap = { '日': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6 };
-      const dayOfWeek = dayMap[dayChar];
-      
-      if (dayOfWeek === undefined) return null;
+    if (dayOfWeek === null || dayOfWeek === undefined) return null;
 
-      // Convert 12-hour to 24-hour format
-      let startHour24 = parseInt(startHour);
-      let endHour24 = parseInt(endHour);
-      
-      if (startAmPm === 'PM' && startHour24 !== 12) startHour24 += 12;
-      if (startAmPm === 'AM' && startHour24 === 12) startHour24 = 0;
-      if (endAmPm === 'PM' && endHour24 !== 12) endHour24 += 12;
-      if (endAmPm === 'AM' && endHour24 === 12) endHour24 = 0;
+    const timeMatch = timePart.match(/(\d{1,2}):(\d{2})(?:\s*(AM|PM))?\s*-\s*(\d{1,2}):(\d{2})(?:\s*(AM|PM))?/i);
+    if (!timeMatch) return null;
 
-      return {
-        days: [dayOfWeek],
-        startTime: { hour: startHour24, minute: parseInt(startMin) },
-        endTime: { hour: endHour24, minute: parseInt(endMin) }
-      };
+    let startHour24 = parseInt(timeMatch[1], 10);
+    let endHour24 = parseInt(timeMatch[4], 10);
+    const startAmPm = timeMatch[3];
+    const endAmPm = timeMatch[6];
+
+    if (startAmPm) {
+      if (startAmPm.toUpperCase() === 'PM' && startHour24 !== 12) startHour24 += 12;
+      if (startAmPm.toUpperCase() === 'AM' && startHour24 === 12) startHour24 = 0;
+    }
+    if (endAmPm) {
+      if (endAmPm.toUpperCase() === 'PM' && endHour24 !== 12) endHour24 += 12;
+      if (endAmPm.toUpperCase() === 'AM' && endHour24 === 12) endHour24 = 0;
     }
 
-    return null;
+    return {
+      days: [dayOfWeek],
+      startTime: { hour: startHour24, minute: parseInt(timeMatch[2], 10) },
+      endTime: { hour: endHour24, minute: parseInt(timeMatch[5], 10) }
+    };
   }
 
   function detectTermTitle(doc) {
-    const titleCandidates = [
-      ...Array.from(doc.querySelectorAll("h1, h2, h3, .PATRANSACTIONTITLE, .PTTEXT, .ps_pageheader")),
-    ];
-    
-    for (const el of titleCandidates) {
-      const t = cleanText(el.textContent);
-      if (!t) continue;
-      if (/学期|学年|Term|Session|课程表|Class Schedule/i.test(t)) {
-        return t;
-      }
-    }
-    
-    const title = (doc.title || "").trim();
-    if (title) return title;
-    
-    // Detect language and return appropriate default
-    const isEnglish = doc.documentElement.lang === 'en' || 
-                     doc.querySelector('title')?.textContent?.includes('My Class Schedule') ||
-                     doc.querySelector('span')?.textContent?.includes('Component');
-    
-    return isEnglish ? "My Class Schedule" : "我的课程表";
+    const termEl = doc.querySelector('span[id^="DERIVED_REGFRM1_SSR_STDNTKEY_DESCR"]');
+    const termText = termEl ? cleanText(termEl.textContent) : "";
+    if (termText) return termText;
+
+    const title = cleanText(doc.title || "");
+    return title || "课程表";
   }
 
   /**
@@ -571,7 +464,7 @@
     return null;
   }
 
-  function shouldSkipDate(date, targetDayOfWeek) {
+  function shouldSkipDate(date) {
     // Skip if it's a holiday
     if (isHoliday(date)) {
       return true;
@@ -602,8 +495,41 @@
       ? event.occurrenceDates
       : enumerateOccurrencesFromRanges(event.dateRanges || [], event.days || []);
 
-    return sourceDates.map((date) => ({
-      date: new Date(date),
+    const seenKeys = new Set();
+    const filteredDates = [];
+
+    for (const date of sourceDates) {
+      const normalized = normalizeDate(date);
+      if (!normalized || shouldSkipDate(normalized)) continue;
+      const key = toDateString(normalized);
+      if (seenKeys.has(key)) continue;
+      seenKeys.add(key);
+      filteredDates.push(new Date(normalized.getTime()));
+    }
+
+    const targetDays = Array.isArray(event.days) ? event.days : [];
+    const startDate = normalizeDate(event.startDate);
+    const endDate = normalizeDate(event.endDate);
+
+    if (startDate && endDate && targetDays.length > 0) {
+      let checkDate = new Date(startDate.getTime());
+      while (checkDate <= endDate) {
+        const makeupClass = isMakeupClassDay(checkDate);
+        if (makeupClass && targetDays.includes(makeupClass.originalDay)) {
+          const key = toDateString(checkDate);
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            filteredDates.push(new Date(checkDate.getTime()));
+          }
+        }
+        checkDate.setDate(checkDate.getDate() + 1);
+      }
+    }
+
+    filteredDates.sort((a, b) => a - b);
+
+    return filteredDates.map((date) => ({
+      date: new Date(date.getTime()),
       startTime: event.startTime,
       endTime: event.endTime,
       summary: event.summary,
@@ -750,43 +676,47 @@
   }
 
   function generateRRuleAndExceptions(event) {
-    // Generate RRULE with EXDATE for holidays and makeup classes
-    const startDate = event.startDate;
-    const endDate = event.endDate;
-    const targetDaysOfWeek = event.days;
-    
-    // Calculate total weeks
-    const totalDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-    const totalWeeks = Math.ceil(totalDays / 7);
+    // Generate RRULE with EXDATE/RDATE for holidays and makeup classes
+    const startDate = normalizeDate(event.startDate);
+    const endDate = normalizeDate(event.endDate);
+    const targetDaysOfWeek = Array.isArray(event.days) ? event.days : [];
+
+    if (!startDate || !endDate || targetDaysOfWeek.length === 0) {
+      const fallback = startDate || new Date();
+      return {
+        firstOccurrence: fallback,
+        weekCount: 1,
+        dayOfWeek: fallback.getDay(),
+        exceptionDates: [],
+        rdates: []
+      };
+    }
     
     // Find the first occurrence date
-    let firstOccurrence = new Date(startDate);
-    while (!targetDaysOfWeek.includes(firstOccurrence.getDay())) {
+    let firstOccurrence = new Date(startDate.getTime());
+    while (firstOccurrence <= endDate && !targetDaysOfWeek.includes(firstOccurrence.getDay())) {
       firstOccurrence.setDate(firstOccurrence.getDate() + 1);
     }
     
-    // Generate all basic dates to find exceptions
-    const basicDates = [];
+    // Generate all dates to find exceptions
     const exceptionDates = [];
-    const makeupEvents = [];
+    const rdates = [];
     
-    let currentDate = new Date(firstOccurrence);
+    let currentDate = new Date(firstOccurrence.getTime());
     let weekCount = 0;
     
-    while (currentDate <= endDate && weekCount < totalWeeks) {
+    while (currentDate <= endDate) {
       const dayOfWeek = currentDate.getDay();
       
       if (targetDaysOfWeek.includes(dayOfWeek)) {
-        basicDates.push(new Date(currentDate));
-        
         // Check if this date should be excluded (holiday)
-        if (shouldSkipDate(currentDate, dayOfWeek)) {
+        if (shouldSkipDate(currentDate)) {
           exceptionDates.push(new Date(currentDate));
         }
         
         // Move to next week
         currentDate.setDate(currentDate.getDate() + 7);
-        weekCount++;
+        weekCount += 1;
       } else {
         currentDate.setDate(currentDate.getDate() + 1);
       }
@@ -797,11 +727,7 @@
     while (checkDate <= endDate) {
       const makeupClass = isMakeupClassDay(checkDate);
       if (makeupClass && targetDaysOfWeek.includes(makeupClass.originalDay)) {
-        makeupEvents.push({
-          date: new Date(checkDate),
-          originalDay: makeupClass.originalDay,
-          note: `补${getChineseDayName(makeupClass.originalDay)}的课`
-        });
+        rdates.push(new Date(checkDate));
       }
       checkDate.setDate(checkDate.getDate() + 1);
     }
@@ -811,18 +737,13 @@
       weekCount: Math.max(1, weekCount),
       dayOfWeek: firstOccurrence.getDay(),
       exceptionDates,
-      makeupEvents
+      rdates
     };
   }
   
   function getDayName(dayOfWeek) {
     const days = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
     return days[dayOfWeek];
-  }
-
-  function getChineseDayName(dayOfWeek) {
-    const names = ['日', '一', '二', '三', '四', '五', '六'];
-    return names[dayOfWeek];
   }
 
   /**
@@ -851,7 +772,7 @@
     const eventGroups = new Map();
 
     for (const ev of parsed.events) {
-      let baseSummary = ev.courseCode || "课程";
+      let baseSummary = ev.courseTitle || ev.summary || "课程";
       if (ev.component) {
         baseSummary += ` - ${ev.component}`;
       }
@@ -875,7 +796,7 @@
 
         console.log(
           APP_NAME,
-          `常规课程 "${aggregatedEvent.summary}": ${rruleData.weekCount} 次, ${rruleData.exceptionDates.length} 个例外, ${rruleData.makeupEvents.length} 个补课`
+          `常规课程 "${aggregatedEvent.summary}": ${rruleData.weekCount} 次, ${rruleData.exceptionDates.length} 个例外, ${rruleData.rdates.length} 个补课`
         );
 
         const dtStart = combineDateAndTime(rruleData.firstOccurrence, aggregatedEvent.startTime);
@@ -897,6 +818,13 @@
           lines.push(`EXDATE;TZID=${TZID}:${exdates}`);
         }
 
+        if (rruleData.rdates.length > 0) {
+          const rdates = rruleData.rdates
+            .map((date) => toLocalStringBasic(combineDateAndTime(date, aggregatedEvent.startTime)))
+            .join(",");
+          lines.push(`RDATE;TZID=${TZID}:${rdates}`);
+        }
+
         lines.push("SUMMARY:" + escapeICSText(aggregatedEvent.summary));
 
         if (aggregatedEvent.location) {
@@ -912,32 +840,6 @@
         }
 
         lines.push("END:VEVENT");
-
-        for (let i = 0; i < rruleData.makeupEvents.length; i++) {
-          const makeupEvent = rruleData.makeupEvents[i];
-          const makeupStart = combineDateAndTime(makeupEvent.date, aggregatedEvent.startTime);
-          const makeupEnd = combineDateAndTime(makeupEvent.date, aggregatedEvent.endTime);
-
-          lines.push("BEGIN:VEVENT");
-          lines.push("UID:" + buildUID(aggregatedEvent, now, `makeup-${i}`));
-          lines.push("DTSTAMP:" + dtstamp + "Z");
-          lines.push("DTSTART;TZID=" + TZID + ":" + toLocalStringBasic(makeupStart));
-          lines.push("DTEND;TZID=" + TZID + ":" + toLocalStringBasic(makeupEnd));
-          lines.push("SUMMARY:" + escapeICSText(aggregatedEvent.summary + " (调课)"));
-
-          if (aggregatedEvent.location) {
-            lines.push("LOCATION:" + escapeICSText(aggregatedEvent.location));
-          }
-
-          const makeupDesc = [];
-          if (aggregatedEvent.component) makeupDesc.push(`类型: ${aggregatedEvent.component}`);
-          if (aggregatedEvent.section) makeupDesc.push(`班级: ${aggregatedEvent.section}`);
-          if (aggregatedEvent.instructor) makeupDesc.push(`讲师: ${aggregatedEvent.instructor}`);
-          makeupDesc.push(`注: ${makeupEvent.note}`);
-
-          lines.push("DESCRIPTION:" + escapeICSText(makeupDesc.join("\n")));
-          lines.push("END:VEVENT");
-        }
       } else {
         const individualEvents = generateIndividualEventsForDateRange(aggregatedEvent);
 
@@ -972,29 +874,33 @@
       }
     }
 
-    addSpecialEventsToICS(lines, now, dtstamp);
+    addSpecialEventsToICS(lines, dtstamp);
 
     lines.push("END:VCALENDAR");
 
     console.log(APP_NAME, `生成的 ICS 数据长度: ${lines.join('\r\n').length} 字节`);
-    return lines.join("
-");
+    return lines.join("\r\n");
   }
 
-  function addSpecialEventsToICS(lines, now, dtstamp) {
-    // Only add the most important events to keep file small
-    const importantEvents = [
-      { date: "2025-08-24", name: "本科生开学典礼" },
-      { date: "2025-09-15", name: "秋冬学期课程开始" },
-      { date: "2025-12-26", name: "课程结束" },
-      { date: "2025-12-31", name: "浙江大学学生节" }
-    ];
-    
-    for (const event of importantEvents) {
+  function addSpecialEventsToICS(lines, dtstamp) {
+    const specialEvents = Array.isArray(ACADEMIC_CALENDAR_2025_2026.specialEvents)
+      ? ACADEMIC_CALENDAR_2025_2026.specialEvents
+      : [];
+
+    for (const event of specialEvents) {
+      if (event.type && event.type !== "allday") continue;
+      const startDate = event.date || event.start;
+      if (!startDate || !event.name) continue;
+
       lines.push("BEGIN:VEVENT");
       lines.push("UID:" + event.name.replace(/\s/g, '') + "@ps-calendar");
       lines.push("DTSTAMP:" + dtstamp + "Z");
-      lines.push("DTSTART;VALUE=DATE:" + event.date.replace(/-/g, ''));
+      lines.push("DTSTART;VALUE=DATE:" + toDateString(startDate));
+      if (event.end) {
+        const endDate = new Date(event.end.getTime());
+        endDate.setDate(endDate.getDate() + 1);
+        lines.push("DTEND;VALUE=DATE:" + toDateString(endDate));
+      }
       lines.push("SUMMARY:" + escapeICSText(event.name));
       lines.push("TRANSP:TRANSPARENT");
       lines.push("END:VEVENT");
@@ -1003,7 +909,7 @@
 
   function buildUID(ev, now, index = 0) {
     const base = [
-      ev.courseCode || ev.summary,
+      ev.courseTitle || ev.summary,
       ev.component || "",
       ev.section || "",
       ev.location,
@@ -1015,18 +921,6 @@
     const hash = simpleHash(base);
     const timestamp = Math.floor(now.getTime() / 1000);
     return `${hash}-${timestamp}@${HOST_HINT}`;
-  }
-
-  function buildSpecialEventUID(event, now, date = null) {
-    const base = [
-      event.name,
-      event.type || "",
-      date ? toDateString(date) : toDateString(event.date || event.start)
-    ].filter(Boolean).join("-");
-    
-    const hash = simpleHash(base);
-    const timestamp = Math.floor(now.getTime() / 1000);
-    return `special-${hash}-${timestamp}@${HOST_HINT}`;
   }
 
   function buildSuggestedFileName(parsed) {
@@ -1093,30 +987,6 @@
     return date.getFullYear() +
            (date.getMonth() + 1).toString().padStart(2, '0') +
            date.getDate().toString().padStart(2, '0');
-  }
-
-  function foldLine(text) {
-    // ICS line folding: max 75 octets per line
-    if (!text) return "";
-    
-    // Escape special characters for better calendar compatibility
-    text = escapeICSText(text);
-    
-    const maxLen = 73; // Leave room for CRLF
-    if (text.length <= maxLen) return text;
-    
-    const lines = [];
-    let pos = 0;
-    while (pos < text.length) {
-      if (pos === 0) {
-        lines.push(text.substring(pos, pos + maxLen));
-        pos += maxLen;
-      } else {
-        lines.push(" " + text.substring(pos, pos + maxLen - 1));
-        pos += maxLen - 1;
-      }
-    }
-    return lines.join("\r\n");
   }
 
   function escapeICSText(text) {

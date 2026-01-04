@@ -2,6 +2,7 @@
 downloads/
 
 # 忽略临时文件和编辑器文件
+tmp
 *.tmp
 *.temp
 .DS_Store
